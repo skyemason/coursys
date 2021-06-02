@@ -57,10 +57,6 @@ INSTALLED_APPS = (
     'haystack',
     'djcelery_email',
     'django_celery_beat',
-    'featureflags',
-    'rest_framework',
-    'oauth_provider',
-    'rest_framework_swagger',
     'django_otp',
     'django_otp.plugins.otp_totp',
     'django_otp.plugins.otp_static',
@@ -85,7 +81,6 @@ INSTALLED_APPS = (
     'onlineforms',
     'faculty',
     'tacontracts',
-    'api',
     'visas',
     'outreach',
     'sessionals',
@@ -126,17 +121,7 @@ TEMPLATES = [
 AUTHENTICATION_BACKENDS = (
     'django_cas_ng.backends.CASBackend',
 )
-OAUTH_AUTHORIZE_VIEW = 'api.views.oauth_authorize'
-OAUTH_CALLBACK_VIEW = 'api.views.oauth_callback'
-OAUTH_SIGNATURE_METHODS = ['hmac-sha1',]
-OAUTH_UNSAFE_REDIRECTS = True
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework_oauth.authentication.OAuthAuthentication',
-    )
-}
-SWAGGER_SETTINGS = { "api_version": '1' }
+
 
 # basic app setup
 ROOT_URLCONF = 'courses.urls'
@@ -247,6 +232,7 @@ COMPRESS_FILTERS = {
     'js': ['compressor.filters.jsmin.JSMinFilter']
 }
 COMPRESS_ROOT = getattr(localsettings, 'COMPRESS_ROOT', STATIC_ROOT)
+COMPRESS_STORAGE = 'courselib.compress.CompressorFileStorage'
 NPM_ROOT_PATH = getattr(localsettings, 'NPM_ROOT_PATH', '.')
 
 # production-like vs development settings
@@ -317,20 +303,17 @@ else:
     SVN_DB_CONNECT = None
 
 
-
 # should we use the Celery task queue (for sending email, etc)?  Must have celeryd running to process jobs.
 USE_CELERY = getattr(localsettings, 'USE_CELERY', DEPLOY_MODE != 'devel')
 if USE_CELERY:
-    AMPQ_PASSWORD = getattr(secrets, 'RABBITMQ_PASSWORD', 'supersecretpassword')
-    if DEPLOY_MODE != 'devel' or getattr(localsettings, 'DEPLOYED_CELERY_SETTINGS', False):
-        # use AMPQ in production, and move email sending to Celery
-        CELERY_BROKER_URL = getattr(secrets, 'CELERY_BROKER_URL', "amqp://coursys:%s@localhost:5672/myvhost" % (AMPQ_PASSWORD))
-        CELERY_RESULT_BACKEND = 'rpc://'
-        CELERY_TASK_RESULT_EXPIRES = 18000 # 5 hours.
-    else:
-        CELERY_BROKER_URL = getattr(secrets, 'CELERY_BROKER_URL', "amqp://guest:guest@localhost:5672/")
-        CELERY_RESULT_BACKEND = 'rpc://'
-        CELERY_TASK_RESULT_EXPIRES = 18000 # 5 hours.
+    RABBITMQ_USER = getattr(localsettings, 'RABBITMQ_USER', 'coursys')
+    RABBITMQ_PASSWORD = getattr(secrets, 'RABBITMQ_PASSWORD', 'the_rabbitmq_password')
+    RABBITMQ_HOSTPORT = getattr(localsettings, 'RABBITMQ_HOSTPORT', 'localhost:5672')
+    RABBITMQ_VHOST = getattr(localsettings, 'RABBITMQ_VHOST', 'myvhost')
+
+    CELERY_BROKER_URL = 'amqp://%s:%s@%s/%s' % (RABBITMQ_USER, RABBITMQ_PASSWORD, RABBITMQ_HOSTPORT, RABBITMQ_VHOST)
+    CELERY_RESULT_BACKEND = 'rpc://'
+    CELERY_TASK_RESULT_EXPIRES = 18000 # 5 hours.
 
     CELERY_EMAIL = getattr(localsettings, 'CELERY_EMAIL', DEPLOY_MODE != 'devel')
     if CELERY_EMAIL:
@@ -404,14 +387,6 @@ LOGIN_REDIRECT_URL = "/"
 
 DISABLE_REPORTING_DB = getattr(localsettings, 'DISABLE_REPORTING_DB', False)
 DO_IMPORTING_HERE = getattr(localsettings, 'DO_IMPORTING_HERE', False)
-
-# Feature flags to temporarily limit server load, aka "feature flags"
-# Possible values for the set documented in server-setup/index.html#flags
-FEATUREFLAGS_LOADER = 'featureflags.loaders.settings_loader'
-FEATUREFLAGS_DISABLED_VIEW = 'courselib.auth.service_unavailable'
-FEATUREFLAGS_DISABLE = set([])
-FEATUREFLAGS_PANIC_DISABLE = set(['course_browser', 'sims', 'feeds', 'photos'])
-FEATUREFLAGS_PANIC_TIMEOUT = 300
 
 LOGGING = getattr(localsettings, 'LOGGING', {'version': 1,'disable_existing_loggers': False})
 
