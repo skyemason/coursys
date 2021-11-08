@@ -1,5 +1,6 @@
-{% extends "base.html" %}
+{% extends "base-wide.html" %}
 {% load form_display %}
+{% load static %}
 {% block h1 %} Forms {% endblock %}
 {% block title %} Forms {% endblock %}
 
@@ -10,54 +11,52 @@
 {% block headextra %}
 <script nonce="{{ CSP_NONCE }}">
     $(document).ready(function() {
-        $('#form_table').dataTable({
-                    "bPaginate": false,
-                    "bJQueryUI": true,
-                    "aaSorting": [[0, "asc"]],
-        });
+        $("h3.summary_heading").collapsible();
+        $("h2.summary_heading").collapsible();
+
+        // http://live.datatables.net/sovoyuyu/1/edit
         $('#sheet_table').dataTable({
                         "bPaginate": false,
                         "bJQueryUI": true,
                         "aaSorting": [[2, "asc"]],
+        });
+        var tables = $('table.display:not(#sheet_table)').DataTable({
+                    "bPaginate": false,
+                    "bJQueryUI": true,
+                    "aaSorting": [[0, "asc"]],
+                    // https://datatables.net/reference/option/dom
         }); 
+        $('#formSearch').on('keyup click', function () {
+         tables.tables().search($(this).val()).draw();
+        });
     });
 </script>
 {% endblock %}
 
-{% block actions %}
-{% if form_groups or form_admin %}
-<div id="actions">
-    <h2 class="heading">Actions</h2>
-    <ul>
-    	{% if form_groups %}
-        <li><a href="{% url "onlineforms:list_all" %}">Create/Edit Forms</a></li>
-        <li><a href="{% url "onlineforms:admin_list_all" %}">Manage Submissions</a></li>
-        {% endif %}
-    	{% if form_admin %}
-        <li><a href="{% url "onlineforms:manage_groups" %}">Manage Form Groups</a></li>
-        {% endif %}
-        {% if participated %}
-            <li>
-                <a href="{% url "onlineforms:participated_in" %}">
-                    View forms in which you participated
-                </a>
-            </li>
-        {% endif %}
-    </ul>
-</div>
-{% elif participated %}
-    <div id="actions">
-    <h2 class="heading">Actions</h2>
-    <ul>
-    	<li><a href="{% url "onlineforms:participated_in" %}">View completed forms in which you participated</a></li>
-    </ul>
-</div>
-{% endif %}
-{% endblock %}
-
-
-
 {% block content %}
+
+<p><b>
+{% if form_groups or form_admin %}
+    {% if form_groups %}
+        <a href="{% url "onlineforms:list_all" %}">Create/Edit Forms</a></li>
+        | <a href="{% url "onlineforms:admin_list_all" %}">Manage Submissions</a></li>
+    {% endif %}
+    {% if form_admin %}
+        | <a href="{% url "onlineforms:manage_groups" %}">Manage Form Groups</a></li>
+    {% endif %}
+    {% if participated %}
+        | <a href="{% url "onlineforms:participated_in" %}">
+            View forms in which you participated
+        </a>
+        {% endif %}
+    {% elif participated %}
+        | <a href="{% url "onlineforms:participated_in" %}">View completed forms in which you participated</a></li>
+    {% endif %}
+</b></p>
+
+
+
+
 {% if sheet_submissions %}
 <h2 id="assigned">Assigned Forms</h2>
 <div class="datatable_container">
@@ -80,28 +79,54 @@
 </div>
 {% endif %}
 
-
-<h2 id="new">Available forms</h2>
+<h2 id="new">Available Forms</h2>
  	<p>These forms can be filled out and submitted online.</p>
-
+    {% if recent_forms %}
+        <h3 class="summary_heading collapsible-heading-collapsed"><a href="#!general"></a>Recently Completed Forms</h3>
+        <div id="summary_content" class="collapse_menu">
+            <span class="helptext">Forms initiated in the last 60 days:<br/></span>
+                <ul> {% for initial_sheet in recent_forms %}<li> <a href="{% url "onlineforms:sheet_submission_initial" form_slug=initial_sheet.form_submission__form__slug %}">{{ initial_sheet.form_submission__form__title }}</a> ({{ initial_sheet.form_submission__form__unit__name }}) </li> {% endfor %}</ul>
+        </div>
+    {% endif %}
     {% regroup forms by unit as unit_list %}
-    {% for data in unit_list %}
-        <h3 id="forms-{{data.grouper.slug}}">{{ data.grouper.name }}</h3>
-        <ul>
-        {% for f in data.list %}
-        <li><a href="{% url "onlineforms:sheet_submission_initial" form_slug=f.slug %}">{{ f.title }}</a>: {{ f.description }}</li>
-        {% endfor %}
-        </ul>
-    {% endfor %}
 
+    {% for data in unit_list %}
+    <div class="datatable_container">
+        <h2 class="summary_heading collapsible-heading-toggle" id="forms-{{data.grouper.slug}}">{{ data.grouper.name }}</h3>
+        <table class="display">
+            <thead>
+                <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Details</th>
+                </tr>
+            </thead>
+                {% for f in data.list %}
+                <tr>
+                    <td width="20%"><a href="{% url "onlineforms:sheet_submission_initial" form_slug=f.slug %}">{{ f.title }}</a> </td>
+                    <td>{{ f.description }}</td>
+                </tr>
+                {% endfor %}
+        </table>
+    </div>
+    {% endfor %}
     {% if other_forms %}
     <h2 id="other">Forms for Logged-In Users</h2>
- 	<p>These forms are also available if you log in with your SFU account:</p>
-    <ul>
+
+    <table class="display">
+        <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Details</th>
+            </tr>
+        </thead>
         {% for form in other_forms %}
-        <li><a href="{% url "onlineforms:sheet_submission_initial" form_slug=form.slug %}">{{ form.title }}</a> ({{ form.unit.name }}) <span class="helptext">{{ form.description }}</span></li>
+            <tr>
+                <td width="20%"><a href="{% url "onlineforms:sheet_submission_initial" form_slug=form.slug %}">{{ form.title }}</a> ({{ form.unit.name }}) </td>
+                <td>{{ form.description }}</td>
+            </tr>
         {% endfor %}
-    </ul>
+    </table>
     {% endif %}
 
 {% endblock %}
+
