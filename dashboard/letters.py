@@ -2608,19 +2608,27 @@ def grade_change_form(member, oldgrade, newgrade, user, outfile):
     doc.save()
 
 
-class CardReqForm(object):
+class CardReqForm(SFUMediaMixin):
     LABEL_FONT = ("Helvetica", 9)
     ENTRY_FONT = ("Helvetica-Bold", 9)
-    MED_GREY = CMYKColor(0, 0, 0, 0.5)
-    LT_GREY = CMYKColor(0, 0, 0, 0.2)
+    MED_GREY = CMYKColor(0, 0, 0, 0.3)
+    LT_GREY = CMYKColor(0, 0, 0, 0.1)
+    DK_GREY = CMYKColor(0, 0, 0, 0.85)
+    YELLOW = CMYKColor(0, 0, 1, 0)
+    LT_RED = CMYKColor(0, 0.24, 0.43, 0.02)
+    DK_RED = CMYKColor(0, 1, 1, 0)
+    LT_GREEN = CMYKColor(0.09, 0, 0.28, 0.16)
+    DK_GREEN = CMYKColor(1, 0, 0.55, 0.31)
+    DK_BLUE = CMYKColor(0.99,1,0,0.20)
 
     def __init__(self, outfile):
         """
         Create Card Requisition Form(s) in the file object (which could be a Django HttpResponse).
         """
         self.c = canvas.Canvas(outfile, pagesize=letter)
-        self.main_width = 192*mm
-
+        self.main_width = 8*inch
+        self._media_setup()
+        
     def save(self):
         self.c.save()
 
@@ -2651,152 +2659,174 @@ class CardReqForm(object):
             self.c.line(x+boxwidth,y,x, y+boxheight)
         self.c.drawString(x+boxwidth+offset, y+1*mm, text)
 
+
     def draw_form(self, grad, extra_rooms=None):
         """
         Generates card requisition form for this grad
         """
+        self.c.translate(7*mm, 30*mm) # origin = lower-left of the content
+
+        self.c.setFont("Helvetica", 8)
+        self.c.drawCentredString(130*mm, 235*mm, 'PHYSICAL SECURITY SOLUTIONS')
+        self.c.setFont("Helvetica-Bold", 8)
+        self.c.drawCentredString(130*mm, 231*mm, 'BURNABY FOB & DOOR KEY REQUISITION')
+
+        # SFU logo
+        self.c.setStrokeColor(black)
+        self.c.drawImage(logofile, x=0, y=230*mm, width=20*mm, height=10*mm)
+        self.c.setFont('BemboMTPro', 10)
+        self.c.setFillColor(self.sfu_red)
+        self.c.setFont('DINPro', 5)
+        self.c.setFillColor(self.sfu_grey)
+        self._drawStringLeading(self.c, 22*mm, 232*mm, 'Safety & Risk'.upper(), charspace=1)
+        self._drawStringLeading(self.c, 22*mm, 230*mm, 'Services'.upper(), charspace=1)
+        self._drawStringLeading(self.c, 42*mm, 232*mm, 'Campus'.upper(), charspace=1)
+        self._drawStringLeading(self.c, 42*mm, 230*mm, 'Public Safety'.upper(), charspace=1)
+        
+        self.c.setLineWidth(0.5)
+        self.c.setFillColor(black)
+        self.c.setStrokeColor(self.sfu_red)
+    
+        self.c.line(114, 233.5*mm, 114, 229.5*mm)
         self.c.setStrokeColor(black)
         self.c.setFillColor(black)
         self.c.setLineWidth(1)
-        self.c.translate(7*mm, 30*mm) # origin = lower-left of the content
 
-        self.c.setFont("Helvetica-Bold", 11)
-        self.c.drawCentredString(self.main_width/2, 223*mm, 'SFU BURNABY CAMPUS SECURITY - ACCESS & PHYSICAL SECURITY SOLUTIONS')
-        self.c.setFont("Helvetica-Bold", 9)
-        self.c.drawCentredString(self.main_width/2, 219*mm, 'CARD / FOB / KEY REQUISITION')
+        self.c.translate(0*mm, 10*mm) # origin = lower-left of the content
 
         # personal info
-        self._header_line(213*mm, 'CARD/FOB/KEYHOLDER DETAILS (Please type or print)')
-        self._line_entry(0*mm, 208*mm, 'Last Name', 22*mm, 58*mm, grad.person.last_name)
-        self._line_entry(86*mm, 208*mm, 'SFU ID', 30*mm, 45*mm, str(grad.person.emplid))
-        self._line_entry(0*mm, 204*mm, 'Given Name', 22*mm, 58*mm, grad.person.first_name)
-        self._line_entry(86*mm, 204*mm, 'email or phone #', 30*mm, 45*mm, str(grad.person.email()))
+        self._header_line(213*mm, '')
+        self.c.setFillColor(white)
+        self._drawStringLeading(self.c, 50*mm, 213.6*mm, 'CARD/FOB/KEYHOLDER DETAILS')
+        self.c.setFillColor(self.YELLOW)
+        self._drawStringLeading(self.c, 103*mm, 213.6*mm, '(Please fill in form using Excel)')
+        self.c.setFillColor(black)
+        self._line_entry(0*mm, 208*mm, 'Last Name', 22*mm, 65*mm, "Last Name Here")
+        self._line_entry(90*mm, 208*mm, 'Given Name', 22*mm, 65*mm, "Given Name Here")
+        self._line_entry(0*mm, 201.5*mm, 'SFU ID', 22*mm, 25*mm, "123456789")
+        self._line_entry(50*mm, 201.5*mm, 'Email', 10*mm, 50*mm, "EmailExample@sfu.ca")
+        self._line_entry(120*mm, 201.5*mm, 'Holder Dept', 22*mm, 61*mm, "FAS Office of the Dean (2010)")
+        self._line_entry(0*mm, 195*mm, 'Classification', 22*mm, 100*mm, "Faculty (must provide SFU ID)")
+        self._line_entry(125*mm, 195*mm, 'Sub-Group', 22*mm, 56*mm, "")
+        
+        self.c.setLineWidth(0.5)
+        self.c.line(0, 192*mm, self.main_width, 192*mm)
+        self.c.line(0, 191.5*mm, self.main_width, 191.5*mm)
 
-        self._checkbox(0*mm, 197*mm, 'Faculty', offset=1*mm)
-        self._checkbox(22*mm, 197*mm, 'Staff', offset=1*mm)
-        self._checkbox(40*mm, 197*mm, 'Student', fill=1)
-        self._checkbox(63*mm, 197*mm, 'Contractor')
-        self._checkbox(90*mm, 197*mm, 'Other:')
-        self._line_entry(108*mm, 197*mm, '', 0*mm, 53*mm, '')
+
+        self.c.translate(0*mm, -3*mm) # origin = lower-left of the content
 
         # key areas: boxes/outlines
-        self.c.setLineWidth(2)
+        self.c.setLineWidth(1)
         self.c.translate(0*mm, 150*mm) # origin = lower-left of the key-areas boxes
-        self.c.rect(0, 0, 44*mm, 42*mm)
-        self.c.line(4.5*mm, 36*mm, 4.5*mm, 0*mm)
-        self.c.line(9*mm, 42*mm, 9*mm, 0*mm)
-        self.c.line(27*mm, 36*mm, 27*mm, 0*mm)
+        self.c.line(19*mm, 30*mm, 19*mm, 0*mm)
+        self.c.line(38*mm, 40*mm, 38*mm, 0*mm)
+        self.c.line(50*mm, 30*mm, 50*mm, 0*mm)
         self.c.line(0*mm, 36*mm, 44*mm, 36*mm)
         self.c.line(0*mm, 28*mm, 44*mm, 28*mm)
-        self.c.setFillColor(black)
-        self.c.rect(9*mm, 28*mm, 35*mm, 8*mm, fill=1)
-        self.c.rect(49*mm, 28*mm, 143*mm, 8*mm, fill=1)
-        self.c.setFillColor(self.MED_GREY)
-        self.c.setLineWidth(0)
-        self.c.rect(49*mm, 36*mm, 143*mm, 6*mm, fill=1)
+        self.c.line(98*mm, 0*mm, 98*mm, 30*mm)
+        self.c.line(180*mm, 0*mm, 180*mm, 30*mm)
+        for i in range(4):
+            y = 28.0*mm/6*(i+1)
+            self.c.line(0, y, 70*mm, y)
+            self.c.line(75*mm, y, 203*mm, y)
         self.c.setLineWidth(2)
         self.c.setFillColor(black)
-        self.c.rect(49*mm, 0*mm, 143*mm, 28*mm)
-        self.c.line(71*mm, 0*mm, 71*mm, 36*mm)
-        self.c.line(76*mm, 0*mm, 76*mm, 36*mm)
-        self.c.line(129*mm, 0*mm, 129*mm, 36*mm)
-        self.c.line(170*mm, 0*mm, 170*mm, 36*mm)
+        self.c.rect(0*mm, 24*mm, 70*mm, 7*mm, fill=1)
+        self.c.rect(75*mm, 24*mm, 128*mm, 7*mm, fill=1)
+        self.c.setFillColor(self.LT_GREEN)
+        self.c.setStrokeColor(self.LT_GREEN)
+        self.c.rect(0, 31.7*mm, 37.5*mm, 5*mm, fill=1)
+        self.c.setStrokeColor(self.DK_GREEN)
+        self.c.rect(0, 0, 70*mm, 42*mm)
+        self.c.rect(0*mm, 36*mm, 70*mm, 6*mm, fill=1)
+        self.c.setLineWidth(2)
+        self.c.setFillColor(self.LT_RED)
+        self.c.setStrokeColor(self.DK_RED)
+        self.c.rect(75*mm, 36*mm, 128*mm, 6*mm, fill=1)
+        self.c.rect(75*mm, 0*mm, 128*mm, 42*mm)
+        self.c.setStrokeColor(black)
+        self.c.setLineWidth(2)
+        self.c.setFillColor(black)
         self.c.setLineWidth(1)
-        for i in range(5):
-            y = 28.0*mm/6*(i+1)
-            self.c.line(0, y, 44*mm, y)
-            self.c.line(49*mm, y, 192*mm, y)
 
         # key areas: text
+        self.c.setFont("Helvetica-Bold", 9)
+        self.c.drawCentredString(36*mm, 38*mm, 'KEY REQUEST')
+        self.c.drawString(129*mm, 38*mm, 'FOB REQUEST')
         self.c.setFont("Helvetica", 7)
-        self.c.drawCentredString(4.5*mm, 39*mm, 'Item')
-        self.c.drawCentredString(4.5*mm, 37*mm, 'Type')
-        self.c.drawCentredString(27*mm, 37*mm, 'Area (keys / cards / fobs)')
-        self.c.drawString(50*mm, 37*mm, 'Schedule (applied only to Card / Fob space access)')
-        self.c.saveState()
-        self.c.rotate(90)
-        self.c.drawString(29*mm, -3*mm, 'Key')
-        self.c.drawString(29*mm, -7.5*mm, 'Card')
-        self.c.restoreState()
+        self.c.drawString(39.5*mm, 32.7*mm, 'If known')
+        self.c.drawString(102*mm, 32.7*mm, 'See drop down menu for access rights (complete form electronically)')
+        self.c.setFont("Helvetica", 6)
         self.c.setFillColor(white)
-        self.c.drawString(10*mm, 29*mm, 'Building')
-        self.c.drawString(27*mm, 29*mm, 'Room / Door #')
-        self.c.drawString(49*mm, 29*mm, 'Effective Date')
+        self.c.drawString(6*mm, 25*mm, 'Building')
+        self.c.drawString(22*mm, 25*mm, 'Room / Door #')
+        self.c.drawString(41*mm, 25*mm, 'Core #')
+        self.c.drawString(53*mm, 29*mm, 'Key to be')
+        self.c.drawString(53*mm, 27*mm, 'returned by')
+        self.c.drawString(53*mm, 25*mm, 'YYYYMMDD:')
         self.c.drawCentredString(73*mm, 32*mm, '24')
         self.c.drawCentredString(73*mm, 29*mm, 'Hr')
-        self.c.drawString(77*mm, 29*mm, 'Other Days/Times')
-        self.c.drawString(130*mm, 29*mm, 'Access Group (if known)')
-        self.c.drawString(171*mm, 29*mm, 'Expiry Date')
+        self.c.drawString(77.5*mm, 25*mm, 'Effective Date/Time')
+        self.c.drawString(132*mm, 25*mm, 'Access List/Group')
+        self.c.drawString(183*mm, 25*mm, 'Expiry Date/Time')
         self.c.setFillColor(black)
-
-        rooms = grad.program.unit.config.get('card_rooms', '').split('|')
-        if extra_rooms:
-            rooms += extra_rooms.split('|')
-
-        if grad.current_status in STATUS_APPLICANT:
-            # applicants start access next semester
-            # ... assuming nobody does these requests >4mo in advance. I'll take that bet.
-            start = Semester.next_starting().start
-        else:
-            # everyone else starts now
-            start = datetime.date.today()
-
-        end = start + datetime.timedelta(days=(365*5+1))
-        for i,r in enumerate(rooms):
-            y = 28.0*mm/6*(5-i) + 1*mm
-            if ':' in r:
-                bld,rm = r.split(':', 2)
-            else:
-                bld,rm = r, ''
-
-            self.c.drawString(6*mm, y, 'X')
-            self.c.drawString(10*mm, y, bld)
-            self.c.drawString(28*mm, y, rm)
-            self.c.drawString(50*mm, y, start.isoformat())
-            self.c.drawString(72*mm, y, 'X')
-            self.c.drawString(171*mm, y, end.isoformat())
 
         self.c.translate(0*mm, -150*mm) # origin = lower-left of the content
 
-        self._line_entry(23*mm, 145*mm, 'Desk or cabinet key #', 35*mm, 45*mm)
         self.c.setFont(*self.LABEL_FONT)
-        self.c.drawString(104*mm, 145*mm, '(attach an envelope to include a sample key if possible)')
-        self._checkbox(0*mm, 136*mm, 'New Card', offset=2*mm, fill=1)
-        self._checkbox(23*mm, 136*mm, 'Update existing card', offset=1*mm)
-        self._line_entry(81*mm, 136*mm, 'Card/Fob #:', 22*mm, 45*mm)
-        self._line_entry(23*mm, 130*mm, 'Additional Information:', 35*mm, 94*mm)
+        self.c.setStrokeColor(self.DK_RED)
+        self._checkbox(75*mm, 143*mm, 'New Fob', offset=2*mm, fill=1)
+        self._checkbox(105*mm, 143*mm, 'Update existing fob', offset=1*mm)
+        self._line_entry(145*mm, 143*mm, 'Card/Fob #:', 19*mm, 39*mm)
+        self.c.setStrokeColor(black)
+        self.c.setFont("Helvetica-Bold", 9)
+        self.c.drawString(1*mm, 145*mm, 'Please note - cabinet/desk keys are ordered')
+        self.c.drawString(1*mm, 141.5*mm, 'via a locksmith work order')
+
+        self._line_entry(23*mm, 132*mm, 'Additional Information:', 40*mm, 94*mm)
+
+        self.c.setLineWidth(0.5)
+        self.c.line(0, 129*mm, self.main_width, 129*mm)
+        self.c.line(0, 128.5*mm, self.main_width,128.5*mm)
 
         # office-use blocks
         self.c.translate(0*mm, 88*mm) # origin = lower-left of the office-use boxes
         self.c.setFillColor(self.MED_GREY)
-        self.c.setLineWidth(0)
-        self.c.rect(0*mm, 33*mm, 93*mm, 4.5*mm, fill=1)
-        self.c.rect(103*mm, 33*mm, 89*mm, 4.5*mm, fill=1)
+        self.c.setStrokeColor(self.MED_GREY)
+        self.c.setLineWidth(2)
+        self.c.rect(0*mm, 33*mm, 100*mm, 4.5*mm, fill=1)
+        self.c.setStrokeColor(self.MED_GREY)
+        self.c.rect(103*mm, 33*mm, 100*mm, 4.5*mm, fill=1)
         self.c.setFillColor(self.LT_GREY)
-        self.c.rect(103*mm, 0*mm, 89*mm, 33*mm, fill=1)
+        self.c.setStrokeColor(self.LT_GREY)
+        self.c.rect(103*mm, 0*mm, 100*mm, 33*mm, fill=1)
         self.c.setFillColor(black)
         self.c.setLineWidth(2)
-        self.c.rect(0*mm, 28*mm, 93*mm, 5*mm, fill=1)
-        self.c.rect(0*mm, 0*mm, 93*mm, 28*mm)
+        self.c.setStrokeColor(black)
+        self.c.rect(0*mm, 28*mm, 100*mm, 5*mm, fill=1)
+        self.c.rect(0*mm, 0*mm, 100*mm, 28*mm)
         self.c.line(14*mm, 0*mm, 14*mm, 28*mm)
         self.c.line(44*mm, 0*mm, 44*mm, 28*mm)
         self.c.line(62*mm, 0*mm, 62*mm, 28*mm)
         self.c.line(85*mm, 0*mm, 85*mm, 28*mm)
         self.c.setLineWidth(1)
-        for i in range(5):
-            y = 28.0*mm/6*(i+1)
-            self.c.line(0, y, 93*mm, y)
+        for i in range(4):
+            y = 28.0*mm/5*(i+1)
+            self.c.line(0, y, 100*mm, y)
 
-        self.c.rect(143*mm, 9*mm, 28*mm, 20*mm)
-        self.c.line(157*mm, 14*mm, 157*mm, 29*mm)
-        self.c.line(143*mm, 24*mm, 171*mm, 24*mm)
-        self.c.line(143*mm, 19*mm, 171*mm, 19*mm)
-        self.c.line(143*mm, 14*mm, 171*mm, 14*mm)
+        self.c.rect(143*mm, 9*mm, 37*mm, 20*mm)
+        self.c.line(161*mm, 14*mm, 161*mm, 29*mm)
+        self.c.line(143*mm, 24*mm, 180*mm, 24*mm)
+        self.c.line(143*mm, 19*mm, 180*mm, 19*mm)
+        self.c.line(143*mm, 14*mm, 180*mm, 14*mm)
+
+        self.c.rect(161*mm, 14*mm, 19*mm, 10*mm, fill=1)
 
         # office-use text
-        self.c.setFont(*self.LABEL_FONT)
-        self.c.drawString(1*mm, 34*mm, 'Office use only (key code may be entered if known)')
-        self.c.drawString(104*mm, 34*mm, 'Office use only')
+        self.c.setFont("Helvetica", 8)
+        self.c.drawString(1*mm, 34.5*mm, 'Office use only (key code may be entered if known)')
+        self.c.drawString(104*mm, 34.5*mm, 'Office Use Only')
         self.c.setFont("Helvetica", 7)
         self.c.setFillColor(white)
         self.c.drawString(1*mm, 29*mm, 'Keyway')
@@ -2806,89 +2836,108 @@ class CardReqForm(object):
         self.c.drawString(86*mm, 29*mm, 'SN')
         self.c.setFillColor(black)
         self.c.drawString(104*mm, 25*mm, 'Door Key')
-        self.c.drawString(104*mm, 20*mm, 'Cabinet/Desk Key')
+        self.c.drawString(104*mm, 20*mm, 'Bluetooth credential')
         self.c.drawString(104*mm, 15*mm, 'Card/Fob')
+        self.c.setFont("Helvetica", 10)
         self.c.drawString(104*mm, 10*mm, 'Grand Total')
-        self.c.drawString(144*mm, 30*mm, 'SC')
-        self.c.drawString(158*mm, 30*mm, 'Deposit')
-        for x,y in [(144,25),(144,20),(144,15),(144,10),(158,25),(158,20),(158,15)]:
+        self.c.setFont("Helvetica", 8)
+        self.c.drawString(144*mm, 30*mm, 'SC/Scale')
+        self.c.drawString(162*mm, 30*mm, 'Deposit')
+        for x,y in [(144,25),(144,20),(144,15),(144,10),(162,25)]:
             self.c.drawString(x*mm, y*mm, '$')
         self._line_entry(104*mm, 1*mm, 'JV:', 5*mm, 40*mm)
-        self._line_entry(152*mm, 1*mm, 'Invoice:', 13*mm, 26*mm)
+        self._line_entry(152*mm, 1*mm, 'Invoice:', 13*mm, 35*mm)
         self.c.translate(0*mm, -88*mm) # origin = lower-left of the content
 
         # payment details
         self._header_line(82*mm, 'PAYMENT DETAILS')
-        self.c.setFont("Helvetica-Bold", 8)
-        self.c.drawString(1*mm, 78*mm, 'Charge To:')
-        self.c.drawString(112*mm, 78*mm, 'Refund')
-        self.c.drawString(112*mm, 75*mm, 'Deposit to:')
+        self.c.setFillColor(self.YELLOW) # yellow highlight
+        self.c.rect(x=0, y=77*mm, width=self.main_width, height=4*mm, stroke=0, fill=1)
+        self.c.setFillColor(black) 
+        self.c.setFont("Helvetica-Bold", 9)
+        self.c.drawString(1*mm, 78*mm, 'NOTE:')
+        self.c.setFillColor(self.DK_BLUE)
+        self.c.drawString(148*mm, 78*mm, 'Account # required for all requests.')
+        self.c.setFillColor(black)
+        self.c.setFont("Helvetica", 9)
+        self.c.drawString(12*mm, 78*mm, 'SFU paid Staff/Faculty & dept assigned key/fob costs must be paid by department.')
+
+        self._checkbox(0*mm, 71*mm, 'Individual responsible for Key Deposit or Fob Sale Fee (not applicable for SFU faculty or staff including TSSU members)', offset=1*mm, boxheight=4*mm, fontsize=9)
+        self._checkbox(0*mm, 67*mm, 'Requesting departments wishes to waive student / visitor deposit for this request or Contractor Agreement attached', offset=1*mm, boxheight=4*mm, fontsize=9)
+        self._checkbox(0*mm, 63*mm, 'Department covering Fob Sale Fee (required for all staff / faculty requests)', offset=1*mm, fill=1, boxheight=4*mm, fontsize=9)
+        self._checkbox(0*mm, 59*mm, 'Department responsible for Key Service Charge(s) (Applicable to all key requests)', offset=1*mm, boxheight=4*mm, fontsize=9)
+
+        self.c.translate(0*mm, -18*mm) # origin = lower-left of the content
+
+        self._line_entry(1*mm, 71*mm, 'Account Code:', 21*mm, 60*mm, entry_text=str(grad.program.unit.config.get('card_account', '')))
+        
         self.c.setFont("Helvetica", 8)
-        self.c.drawString(1*mm, 75*mm, 'Department')
-        self.c.drawString(68*mm, 75*mm, 'Individual')
-
-        self._checkbox(0*mm, 70*mm, 'Deposit', offset=0.5*mm, boxheight=3.5*mm, fontsize=8)
-        self._checkbox(0*mm, 66.5*mm, 'Service Charge', offset=0.5*mm, fill=1, boxheight=3.5*mm, fontsize=8)
-        self._checkbox(67*mm, 70*mm, 'Deposit', offset=0.5*mm, fill=1, boxheight=3.5*mm, fontsize=8)
-        self._checkbox(67*mm, 66.5*mm, 'Service Charge', offset=0.5*mm, boxheight=3.5*mm, fontsize=8)
-        self._checkbox(111*mm, 70*mm, 'Department', offset=0.5*mm, boxheight=3.5*mm, fontsize=8)
-        self._checkbox(111*mm, 66.5*mm, 'Individual', offset=0.5*mm, boxheight=3.5*mm, fontsize=8)
-
+        self.c.setFillColor(self.DK_GREY)
+        self.c.drawString(1*mm, 67*mm, '(format is OOOO-FF-DDDD-PPPPP or OOOO-FF-JJJJJJJJ)') 
+        self.c.drawString(123*mm, 67*mm, '(Object-Fund-Dept-Program or Object-Fund-Project)') 
         self.c.setFont("Helvetica-Bold", 8)
-        self._line_entry(1*mm, 63*mm, 'Account Code:', 21*mm, 36*mm, entry_text=str(grad.program.unit.config.get('card_account', '')))
-
-        # find a sensible person to sign the form
-        signers = list(Role.objects_fresh.filter(unit=grad.program.unit, role='ADMN').order_by('-id')) + list(Role.objects_fresh.filter(unit=grad.program.unit, role='GRPD').order_by('-id'))
-        sgn_name = ''
-        sgn_userid = ''
-        sgn_phone = ''
-        for role in signers:
-            import PIL
-            try:
-                sig = Signature.objects.get(user=role.person)
-                sig.sig.open('rb')
-                img = PIL.Image.open(sig.sig)
-                width, height = img.size
-                hei = 7*mm
-                wid = 1.0*width/height * hei
-                sig.sig.open('rb')
-                ir = ImageReader(sig.sig)
-                self.c.drawImage(ir, x=24*mm, y=27*mm, width=wid, height=hei)
-                # info about the person who is signing it (for use below)
-                sgn_name = role.person.name()
-                sgn_userid = role.person.userid
-                sgn_phone = role.person.phone_ext() or grad.program.unit.config.get('tel', '')
-                break
-            except Signature.DoesNotExist:
-                pass
+        self.c.setFillColor(self.DK_BLUE)
+        self.c.drawString(85*mm, 67*mm, 'eg: 7460-11-1234-00000')
+        self.c.setFillColor(black)
+        self.c.setFillColor(self.YELLOW) # yellow highlight
+        self.c.rect(x=0, y=62*mm, width=self.main_width, height=4*mm, stroke=0, fill=1)
+        self.c.setFillColor(black) 
+        self.c.setFillColor(self.DK_GREEN) 
+        self.c.drawString(1*mm, 63*mm, 'Object - GL 7460 for service charge & sale / 6199 for deposit will be used as needed')
+        self.c.setFillColor(self.DK_RED) 
+        self.c.drawString(127*mm, 63*mm, 'Note: Research Grants not authorized for these charges') 
+        
 
         # authorization details
-        self._header_line(58*mm, 'AUTHORIZATION DETAILS')
-        self.c.setFont("Helvetica", 7)
-        self.c.drawString(0*mm, 53*mm, 'I understand that by signing and submitting this request that that the person listed above is required to pick-up their')
-        self.c.drawString(0*mm, 50*mm, 'key/card/fob from Access Control WMC 3101 within 30 days unless details are supplied in additional information field above.')
+        self._header_line(57.5*mm, '')
+        self.c.setFillColor(white)
+        self._drawStringLeading(self.c, 30*mm, 58*mm, 'AUTHORIZATION DETAILS')
+        self.c.setFillColor(self.YELLOW)
+        self.c.setFont("Helvetica-Bold", 6)
+        self._drawStringLeading(self.c, 72*mm, 58.5*mm, '(TO BE COMPLETED BY AN AUTHORIZED DEPARTMENTAL ACCESS CONTROL SIGNING AUTHORITY)')
+        self.c.setFillColor(black)
+        self.c.setFont("Helvetica", 8)
+        self.c.setStrokeColor(self.DK_RED)
+        self.c.line(68*mm, 50.5*mm, 78*mm, 50.5*mm)
+        self.c.setFillColor(self.DK_RED)
+        self.c.drawString(0*mm, 54*mm, 'I understand that by signing and submitting this request that the person listed above is required to pick-up their')
+        self.c.drawString(0*mm, 51*mm, 'key/card/fob from Access Control DISC 1, 1300 within 30 days unless details are supplied in additional information field above.')
+        self.c.setFont("Helvetica-Bold", 7)
+        self.c.drawString(0*mm, 47*mm, 'As the signing authority, I understand that I am responsible to advise Access Control if the person is leaving the department/SFU & arrange for all keys to be returned')
+        self.c.setFont("Helvetica-Bold", 8)
+        self.c.setFillColor(self.DK_BLUE)
+        self.c.drawString(0*mm, 43*mm, 'NOTE: Authorization below must be made by an Access Control approved signing authority only')
+        self.c.setFillColor(black)
+        self.c.setStrokeColor(black)
+
+        self.c.translate(0*mm, -3*mm) # origin = lower-left of the content
+        
         self._line_entry(1*mm, 40*mm, 'Date', 9*mm, 22*mm, entry_text=datetime.date.today().isoformat())
-        self._line_entry(36*mm, 40*mm, 'Department', 22*mm, 125*mm, entry_text=grad.program.unit.name)
-        self._line_entry(1*mm, 34*mm, 'Authorized by', 31*mm, 41*mm, entry_text=sgn_name)
-        self._line_entry(77*mm, 34*mm, 'Computing ID', 22*mm, 36*mm, entry_text=sgn_userid)
-        self._line_entry(1*mm, 27*mm, 'Signature', 22*mm, 50*mm, entry_text='')
-        self._line_entry(77*mm, 27*mm, 'Phone #', 22*mm, 36*mm, entry_text=sgn_phone)
+        self._line_entry(36*mm, 40*mm, 'Department', 22*mm, 144*mm, entry_text="")
+        self._line_entry(1*mm, 34*mm, 'Authorized by', 31*mm, 41*mm, entry_text="")
+        self.c.setFont("Helvetica", 5.5)
+        self.c.drawString(21*mm, 35.5*mm, '(Print/Type):')
+        self.c.setFont("Helvetica", 8)
+        self._line_entry(77*mm, 34*mm, 'Computing ID:', 22*mm, 36*mm, entry_text="")
+        self._line_entry(1*mm, 28*mm, 'Signature:', 18*mm, 80*mm, entry_text='')
+        self._line_entry(140*mm, 34*mm, 'Phone #:', 18*mm, 44*mm, entry_text="")
 
         # signatures
         self._header_line(23*mm, 'READ & SIGN AT TIME OF PICK-UP')
         self.c.setFont("Helvetica-Bold", 8)
         self.c.drawString(1*mm, 20*mm, 'Please read the following before signing:')
         self.c.setFont("Helvetica", 7)
-        self.c.drawString(1*mm, 17.5*mm, '\u2022 I acknowledge that cards, fobs and keys are the property of SFU and are issued for my own use.')
-        self.c.drawString(1*mm, 15*mm, '\u2022 Items issued will not be passed on to another person and will be returned to this office ONLY')
-        self.c.drawString(1*mm, 12.5*mm, '\u2022 Lost or Found cards/fobs/keys must be reported or returned to Campus Security TC 050 (778-782-3100).')
-        self.c.drawString(1*mm, 10*mm, '\u2022 Policy AD 1-4 applies')
+        self.c.drawString(1*mm, 17*mm, '\u2022 I acknowledge Policy AD 1-4 applies & that keys are the property of SFU and are issued for my own use.')
+        self.c.drawString(1*mm, 14*mm, '\u2022 Keys issued will not be passed on to another person and will be returned to this office ONLY')
+        self.c.drawString(1*mm, 11*mm, '\u2022 Lost or Found cards/fobs/keys must be reported or returned to Access Control Discovery 1 room 1301 (778-782-3100).')
+        self.c.drawString(1*mm, 8*mm, '\u2022 Cards / Fobs provided to me are for my own use only and may not be shared.')
         self.c.setLineWidth(2)
-        self.c.line(45*mm, 2*mm, 90*mm, 2*mm)
-        self.c.line(94*mm, 2*mm, 116*mm, 2*mm)
+        self.c.line(45*mm, -2*mm, 90*mm, -2*mm)
+        self.c.line(94*mm, -2*mm, 116*mm, -2*mm)
         self.c.setFont("Helvetica", 8)
-        self.c.drawString(45*mm, -1*mm, 'Card / key holder signature')
-        self.c.drawString(94*mm, -1*mm, 'Date')
+        self.c.drawString(45*mm, -5*mm, 'Card / key holder signature')
+        self.c.drawString(94*mm, -5*mm, 'Date')
+        self.c.drawString(160*mm, -5*mm, 'Form V59 updated 9 Mar 21')
 
         self.c.showPage()
 
