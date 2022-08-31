@@ -2628,6 +2628,7 @@ class CardReqForm(SFUMediaMixin):
         self.c = canvas.Canvas(outfile, pagesize=letter)
         self.main_width = 8*inch
         self._media_setup()
+        self.form = self.c.acroForm 
         
     def save(self):
         self.c.save()
@@ -2912,16 +2913,25 @@ class CardReqForm(SFUMediaMixin):
 
         self.c.translate(0*mm, -3*mm) # origin = lower-left of the content
         
-        self._line_entry(1*mm, 40*mm, 'Date', 9*mm, 22*mm, entry_text=datetime.date.today().isoformat())
-        self._line_entry(36*mm, 40*mm, 'Department', 22*mm, 144*mm, entry_text="")
-        self._line_entry(1*mm, 34*mm, 'Authorized by', 31*mm, 41*mm, entry_text="")
-        self.c.setFont("Helvetica", 5.5)
-        self.c.drawString(21*mm, 35.5*mm, '(Print/Type):')
-        self.c.setFont("Helvetica", 8)
-        self._line_entry(77*mm, 34*mm, 'Computing ID:', 22*mm, 36*mm, entry_text="")
-        self._line_entry(1*mm, 28*mm, 'Signature:', 18*mm, 80*mm, entry_text='')
-        self._line_entry(140*mm, 34*mm, 'Phone #:', 18*mm, 44*mm, entry_text="")
 
+        self.c.setFont("Helvetica", 9)
+        self.c.drawString(1*mm, 40*mm, 'Date')
+        # https://www.javatpoint.com/creating-interactive-pdf-forms-using-python
+        self.form.textfield(name = 'authorization_date', tooltip = 'Date',  x=16*mm, y=55*mm, borderStyle = 'inset', width=70, height=15, forceBorder = True)  
+        self.c.drawString(36*mm, 40*mm, 'Department')
+        self.form.textfield(name = 'authorization_department', tooltip = 'Department',  x=61*mm, y=55*mm, borderStyle = 'inset', width=415, height=15, forceBorder = True)  
+        self.c.drawString(1*mm, 34*mm, 'Authorized by')
+        self.form.textfield(name = 'authorization_name', tooltip = 'Authorizer Name',  x=40*mm, y=49*mm, borderStyle = 'inset', width=120, height=15, forceBorder = True) 
+        self.c.setFont("Helvetica", 5.5)
+        self.c.drawString(21*mm, 34*mm, '(Print/Type):')
+        self.c.setFont("Helvetica", 9)
+        self.c.drawString(77*mm, 34*mm, 'Computing ID:')
+        self.form.textfield(name = 'authorization_id', tooltip = 'Computing ID',  x=106*mm, y=49*mm, borderStyle = 'inset', width=108, height=15, forceBorder = True)
+        self.c.drawString(1*mm, 28*mm, 'Signature:')
+        self.form.textfield(name = 'authorization_signature', tooltip = 'Signature',  x=24*mm, y=43*mm, borderStyle = 'inset', width=520, height=15, forceBorder = True)
+        self.c.drawString(140*mm, 34*mm, 'Phone #:')
+        self.form.textfield(name = 'authorization_phone', tooltip = 'Phone Number',  x=162*mm, y=49*mm, borderStyle = 'inset', width=128.5, height=15, forceBorder = True)
+        self.c.setFont("Helvetica", 8)
         # signatures
         self._header_line(23*mm, 'READ & SIGN AT TIME OF PICK-UP')
         self.c.setFont("Helvetica-Bold", 8)
