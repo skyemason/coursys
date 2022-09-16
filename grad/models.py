@@ -237,7 +237,7 @@ class GradStudent(models.Model, ConditionalSaveMixin):
 
     english_fluency = models.CharField(max_length=50, blank=True, help_text="I.e. Read, Write, Speak, All.")
     mother_tongue = models.CharField(max_length=25, blank=True, help_text="I.e. English, Chinese, French")
-    is_canadian = models.NullBooleanField()
+    is_canadian = models.BooleanField(null=True)
     passport_issued_by = models.CharField(max_length=30, blank=True, help_text="I.e. US, China")
     comments = models.TextField(max_length=250, blank=True, help_text="Additional information.")
 
@@ -587,9 +587,9 @@ class GradStudent(models.Model, ConditionalSaveMixin):
             heshe = 'she'
             himher = 'her'
         else:
-            hisher = "his/her"
-            heshe = 'he/she'
-            himher = 'him/her'
+            hisher = "their"
+            heshe = 'they'
+            himher = 'them'
         
         # financial stuff
         promises = Promise.objects.filter(student=self).order_by('-start_semester')

@@ -1,7 +1,7 @@
 from django import forms
 from django.forms.models import modelformset_factory
 from django.template import Template, TemplateSyntaxError
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext_lazy as _
 
 from coredata.models import Semester, Unit, Person, Role, FuturePerson
 from coredata.forms import PersonField
@@ -158,7 +158,7 @@ class MemoForm(forms.ModelForm):
     def __init__(self,*args, **kwargs):
         super(MemoForm, self).__init__(*args, **kwargs)
         # reorder the fields to the order of the printed memo
-        assert isinstance(self.fields, OrderedDict)
+        # this code assumes dicts are insertion ordered, which they are in Python 3.7+ https://stackoverflow.com/a/39980744/6871666
         keys = ['to_lines', 'from_lines', 'subject', 'sent_date', 'memo_text', 'cc_lines']
         keys.extend([k for k in list(self.fields.keys()) if k not in keys])
 
