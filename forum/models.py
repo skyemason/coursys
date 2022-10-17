@@ -1,8 +1,13 @@
 import datetime
 import hashlib
+import random
 from collections import Counter
 from typing import Dict, Any, List
 
+from courselib.branding import product_name
+from courselib.search import haystack_index
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 from django.db import models, transaction, IntegrityError
 from django.db.models import Max
 from django.http import Http404
@@ -21,7 +26,6 @@ from forum.names_generator import get_random_name
 # TODO: better highlighting of unread replies
 # TODO: better highlighting of instructor content
 # TODO: better highlighting of "approved" answers or instructor approvals
-# TODO: instructors should be able to "close" a thread, so no more activity (by students)
 
 # future TODOs...
 # TODO: thread categories
@@ -29,7 +33,6 @@ from forum.names_generator import get_random_name
 # TODO: nice to have instructor interaction: make public and anonymous
 # TODO: some kind of display of post history
 # TODO: instructors can't be anonymous, so don't configure in avatar_form
-
 
 IDENTITY_CHOICES = [  # Identity.identity_choices should reflect any logical changes here
     ('NAME', 'Names must be fully visible to instructors and students'),
@@ -447,6 +450,8 @@ class Thread(models.Model):
     last_activity = models.DateTimeField(default=datetime.datetime.now, null=False, blank=False)
     config = JSONField(null=False, blank=False, default=dict)
 
+    was_broadcast = config_property('was_broadcast', False)  # was this an broadcast_announcement thread that was pushed?
+
     objects = ThreadManager.from_queryset(ThreadQuerySet)()
 
     class Meta:
@@ -473,6 +478,7 @@ class Thread(models.Model):
                 # something worth noting changed: mark unread for everybody
                 ReadThread.objects.filter(thread_id=self.id).delete()
 
+        self.index_now()
         return result
 
     def get_absolute_url(self):
@@ -497,6 +503,54 @@ class Thread(models.Model):
             'replies': [],
         })
         return data
+
+    def broadcast_announcement(self):
+        """
+        Email contents of this post to everyone in the course.
+        """
+        url = settings.BASE_ABS_URL + self.post.get_absolute_url()
+        title = self.title_short()
+
+        text_content = f'''The instructor has broadcast an announcement from the discussion forum on {product_name(hint='course')} which you can view here: {url}'''
+        html_content = f'''<base href="{escape(url)}" />
+            <p style="font-size: smaller; font-style: italic;">[The instructor has broadcast this {product_name(hint='course')}
+            discussion forum post as an announcement to the class.
+            You can also view it on {product_name(hint='course')}:
+            <a href="{escape(url)}">#{self.post.number} {escape(title)}</a>.]</p>'''
+        html_content += self.post.html_content()
+        html_content += f'''
+            <p style="font-size: smaller; border-top: 1px solid black;">You received this email from {product_name(hint='course')}.
+            The course instructor/TA requested that it be broadcast as an announcement to all students.
+            You cannot unsubscribe from these messages, but we do ask instructors to use them sparingly.</p>
+            '''
+
+        subject = f'{self.post.offering.name()}: {title}'
+        from_email = self.post.author.person.full_email()
+
+        headers = {
+            'Precedence': 'bulk',
+            'Auto-Submitted': 'auto-generated',
+            'X-coursys-topic': 'forum',
+            'X-course': self.post.offering.slug,
+        }
+
+        members = Member.objects.exclude(role='DROP').filter(offering=self.post.offering).select_related('person')
+        members = list(members)
+        random.shuffle(members)
+
+        for m in members:
+            to_email = m.person.email()
+            if not to_email:
+                continue
+            msg = EmailMultiAlternatives(subject, text_content, from_email, [to_email], headers=headers)
+            msg.attach_alternative(html_content, "text/html")
+            msg.send()
+
+    def index_now(self):
+        """
+        Create/update haystack index of this thread.
+        """
+        haystack_index(Thread, [self])
 
 
 class Reply(models.Model):
@@ -539,6 +593,7 @@ class Reply(models.Model):
                 ReadThread.objects.filter(thread_id=self.thread_id).delete()
                 ReadReply.objects.filter(reply_id=self.id).delete()
 
+        self.thread.index_now()
         return result
 
     def get_absolute_url(self, fragment=False):
