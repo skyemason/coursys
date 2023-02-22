@@ -11,20 +11,116 @@ from datetime import datetime
 from courselib.search import find_userid_or_emplid
 from coredata.models import Person, Unit
 import csv
+from django.utils.html import conditional_escape as escape
+from django_datatables_view.base_datatable_view import BaseDatatableView
+from haystack.query import SearchQuerySet
 
+from functools import wraps
+import time
 
+def timer(func):
+    """helper function to estimate view execution time"""
+
+    @wraps(func)  # used for copying func metadata
+    def wrapper(*args, **kwargs):
+        # record start time
+        start = time.time()
+
+        # func execution
+        result = func(*args, **kwargs)
+        
+        duration = (time.time() - start) * 1000
+        # output execution time to console
+        print('view {} takes {:.2f} ms'.format(
+            func.__name__, 
+            duration
+            ))
+        return result
+    return wrapper
+
+@timer
 @requires_role(["TAAD", "GRAD", "ADMN", "GRPD"])
 def list_all_visas(request, emplid=None):
+    if 'tabledata' in request.GET:
+        return VisaDataJson.as_view()(request)
     if emplid:
         person = Person.objects.get(find_userid_or_emplid(emplid))
-        visa_list = Visa.objects.visible_given_user(person)
     else:
         person = None
-        visa_list = Visa.objects.visible_by_unit(Unit.sub_units(request.units))
-    context = {'visa_list': visa_list, 'person': person}
+    context = {'person': person}
     return render(request, 'visas/view_visas.html', context)
 
+def add_visa_display_class(visa):
+    if visa.is_expired():
+        return 'visaexpired'
+    elif visa.is_almost_expired():
+        return 'visaalmostexpired'
+    elif visa.is_valid():
+        return 'visavalid'
+    else:
+        return ""
 
+class VisaDataJson(BaseDatatableView):
+    model = Visa
+    columns = ['person', 'emplid', 'unit', 'start_date', 'end_date', 'status', 'validity']
+    order_columns = [
+        ['person__last_name', 'person__first_name'],
+        'person__emplid',
+        'unit__label',
+        'start_date',
+        'end_date',
+        'status',
+        'end_date'
+    ]
+    max_display_length = 500
+
+    def get_initial_queryset(self):
+        qs = super(VisaDataJson, self).get_initial_queryset()
+        qs = qs.select_related('unit')
+        return qs
+
+    def filter_queryset(self, qs):
+        GET = self.request.GET
+
+        emplid = None
+        if emplid:
+            qs = qs.visible_given_user(person)
+        else:
+            qs = qs.visible_by_unit(Unit.sub_units(self.request.units))
+
+        # search box
+        srch = GET.get('sSearch', None)
+        if srch:
+            visa_qs = SearchQuerySet().models(Visa).filter(text__fuzzy=srch)[:500]
+            visa_qs = [r for r in visa_qs if r is not None]
+            if visa_qs:
+                max_score = max(r.score for r in visa_qs)
+                visa_pks = (r.pk for r in visa_qs if r.score > max_score/5)
+                qs = qs.filter(visa__in=visa_pks)
+            else:
+                qs = qs.none()
+        return qs
+
+    def render_column(self, visa, column):
+        visaexpiry = add_visa_display_class(visa)
+        if column == 'person':
+            url = visa.get_absolute_url()
+            name = visa.person.sortname()
+            if visa.has_attachments():
+                extra_string = '&nbsp; <i class="fa fa-paperclip" title="Attachment(s)"></i>'
+            else:
+                extra_string = ''
+            return '<a href="%s">%s%s</a>' % (escape(url), escape(name), extra_string)
+        elif column == 'unit':
+            return visa.unit.label
+        elif column == 'emplid':
+            return visa.person.emplid
+        elif column == 'validity':
+            return str("<span class=" + visaexpiry + ">%s</span>" % visa.get_validity())
+
+        return str(getattr(visa, column))
+
+@timer
 @requires_role(["TAAD", "GRAD", "ADMN", "GRPD"])
 def new_visa(request, emplid=None):
     if request.method == 'POST':

@@ -2,10 +2,25 @@
     color: red;
 }
 
+.visaexpired a {
+    color: red;
+    font-weight: bold;
+}
+
 .visaalmostexpired {
     color: orange;
 }
 
+.visaalmostexpired a {
+    color: orange;
+    font-weight: bold;
+}
+
 .visavalid {
     color: green;
+}
+
+.visavalid a {
+    color: green;
+    font-weight: bold;
 }

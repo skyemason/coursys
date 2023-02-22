@@ -38,3 +38,4 @@ def add_visa_display_class(visa):
         return 'class=visavalid'
     else:
         return ""
+
