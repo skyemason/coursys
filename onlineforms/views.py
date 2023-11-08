@@ -19,7 +19,7 @@ from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from onlineforms.forms import FormForm, NewFormForm, SheetForm, FieldForm, DynamicForm, GroupForm, \
     EditSheetForm, NonSFUFormFillerForm, AdminAssignFormForm, AdminAssignSheetForm, EditGroupForm, EmployeeSearchForm, \
     AdminAssignFormForm_nonsfu, AdminAssignSheetForm_nonsfu, CloseFormForm, ChangeOwnerForm, AdminReturnForm, \
-    BulkAssignForm
+    BulkAssignForm, SearchCompletedForm
 from onlineforms.models import Form, Sheet, Field, FIELD_TYPE_MODELS, FIELD_TYPES, FormGroup, \
     FormGroupMember, FieldSubmissionFile, FILE_SECRET_LENGTH
 from onlineforms.models import FormSubmission, SheetSubmission, FieldSubmission
@@ -33,6 +33,8 @@ import csv
 import json
 import os
 
+UNIVERSITY_UNIT = 'UNIV'
+PRIMARY_FACULTY_UNIT = 'APSC'
 #######################################################################
 # Group Management
 
@@ -329,11 +331,10 @@ def _admin_assign_any(request, assign_to_sfu_account=True):
 
         if assign_to_sfu_account:
             form = AdminAssignFormForm(data=request.POST or None,
-                query_set=Form.objects.filter(active=True, owner__in=request.formgroups).exclude(initiators='NON'))
+                query_set=Form.objects.filter(active=True, owner__in=request.formgroups).exclude(initiators='NON').order_by('title'))
         else:
             form = AdminAssignFormForm_nonsfu(data=request.POST or None,
-                query_set=Form.objects.filter(active=True, owner__in=request.formgroups, initiators='ANY'))
-
+                query_set=Form.objects.filter(active=True, owner__in=request.formgroups, initiators='ANY').order_by('title'))
         if request.method == 'POST' and form.is_valid():
             # get the person to assign too
             if assign_to_sfu_account:
@@ -480,13 +481,39 @@ def admin_completed_deleted(request):
     return render(request, "onlineforms/admin/admin_completed_deleted.html", context)
 
 @requires_formgroup()
-def admin_completed_form(request, form_slug):
-    form = get_object_or_404(Form, slug=form_slug, owner__in=request.formgroups)
-    formsubs = FormSubmission.objects.filter(form=form, status='DONE') \
+def admin_completed_form(request, form_slug):    
+    import datetime
+    searchform = SearchCompletedForm(request.POST or None)
+    if request.method == 'POST':
+       
+            fromdate = searchform.data['fromdate']
+            todate = searchform.data['todate']
+            form = get_object_or_404(Form, slug=form_slug, owner__in=request.formgroups)  
+            
+            formsubs = FormSubmission.objects.filter(form=form, status='DONE') \
            .select_related('initiator__sfuFormFiller', 'initiator__nonSFUFormFiller') \
            .annotate(last_sheet_dt=Max('sheetsubmission__completed_at'))
 
-    context = {'form': form, 'formsubs': formsubs}
+            try:
+                if fromdate != None and fromdate != "":
+                    fromdate = datetime.datetime.strptime(fromdate, "%Y-%m-%d").date()
+                    formsubs = formsubs.filter(last_sheet_dt__gte=fromdate)        
+                if todate != None and todate != "" :                
+                    todate = datetime.datetime.strptime(todate, "%Y-%m-%d").date() + datetime.timedelta(days = 1)
+                    formsubs = formsubs.filter(last_sheet_dt__lte=todate)      
+                context = {'form': form, 'formsubs': formsubs, 'searchform': searchform, 'fromdate':searchform.data['fromdate'], 'todate': searchform.data['todate']}               
+            except ValueError:
+                    formsubs = None
+                    context = {'form': form, 'formsubs': formsubs, 'searchform': searchform}    
+                    
+    else:            
+            fromdate = None
+            todate = None
+            form = get_object_or_404(Form, slug=form_slug, owner__in=request.formgroups)    
+            formsubs = None
+            context = {'form': form, 'formsubs': formsubs, 'searchform': searchform}
+
+    
     return render(request, "onlineforms/admin/admin_completed_form.html", context)
 
 
@@ -596,6 +623,36 @@ def waiting_summary_csv(request, form_slug):
         writer.writerow(row)
     return response
 
+@requires_formgroup()
+def download_result_csv(request, form_slug):
+    form = get_object_or_404(Form, slug=form_slug, owner__in=request.formgroups)
+    response = HttpResponse(content_type='text/csv;charset=utf-8')
+    response['Content-Disposition'] = 'inline; filename="%s-summary.csv"' % (form_slug)
+    writer = csv.writer(response)
+    fromdate = request.GET['fromdate']
+    todate = request.GET['todate']
+
+    # A special case for one particular form, for now.
+    if form_slug == 'mse-mse-ta-application-mse-graduate-students':
+        headers, data = form.all_submission_summary_special(recurring_sheet_slug='instructor-approval-7', fromdate=fromdate, todate=todate)
+    # All the SEE hiring forms are duplicates of one another with a different title.  They all also need
+    # this special handling.  Their recurring sheet is all titled the same.
+    #
+    # If we're going to use this code path any more than this, then a better suggestion would be to store the recurring
+    # sheet in the config of the form, look for said config variable, and just call the alternate method if it exists.
+    elif form_slug in ['apsc-see-lecturer-electrical-and-electronics', 'apsc-see-lecturer-engineering-and-design-2',
+                       'apsc-see-lecturer-writing-ethics-and-economics',
+                       'apsc-see-researcher-materials-for-energy-systems', 'apsc-see-researcher-thermo-fluids']:
+        headers, data = form.all_submission_summary_special(recurring_sheet_slug='initial-scoring', fromdate=fromdate, todate=todate)
+    #  This one is just slightly different (the sheet we want to be recurring is named differently.)
+    elif form_slug == 'apsc-see-professor-of-professional-practice':
+        headers, data = form.all_submission_summary_special(recurring_sheet_slug='support-for-interview', fromdate=fromdate, todate=todate)
+    else:
+        headers, data = form.all_submission_summary(fromdate=fromdate, todate=todate)
+    writer.writerow(headers)
+    for row in data:
+        writer.writerow(row)
+    return response
 
 #######################################################################
 # Creating/editing forms
@@ -626,7 +683,7 @@ def list_all(request):
 @requires_formgroup()
 def new_form(request):
     with django.db.transaction.atomic():
-        group_choices = [(fg.id, str(fg)) for fg in request.formgroups]
+        group_choices = [(fg.id, str(fg)) for fg in sorted(request.formgroups, key=lambda x: x.name)]
         if request.method == 'POST' and 'action' in request.POST and request.POST['action'] == 'add':
             form = NewFormForm(request.POST)
             form.fields['owner'].choices = group_choices
@@ -671,7 +728,7 @@ def view_form(request, form_slug):
 def edit_form(request, form_slug):
     with django.db.transaction.atomic():
         owner_form = get_object_or_404(Form, slug=form_slug, owner__in=request.formgroups)
-        group_choices = [(fg.id, str(fg)) for fg in request.formgroups]
+        group_choices = [(fg.id, str(fg)) for fg in sorted(request.formgroups, key=lambda x: x.name)]
 
         if request.method == 'POST' and 'action' in request.POST and request.POST['action'] == 'edit':
             form = FormForm(request.POST, instance=owner_form)
@@ -979,14 +1036,33 @@ def edit_field(request, form_slug, sheet_slug, field_slug):
 #######################################################################
 # Submitting sheets
 
-def index(request):
+def index(request, unit_slug=PRIMARY_FACULTY_UNIT):
+    unit = None
+    unit_options = []
+    try: 
+        university_unit = Unit.objects.get(label=UNIVERSITY_UNIT)
+        faculty_units = Unit.objects.filter(parent_id=university_unit.id)
+
+        unit = Unit.objects.get(label=unit_slug.upper())
+        units = Unit.sub_units([unit])
+        unit_options = faculty_units.exclude(label=unit.label)
+    except:
+        units = Unit.objects.all()
+    
+    if unit and faculty_units:
+        if unit not in faculty_units:
+            raise Http404
+
+    # faculty navigation options
+    unit_options_with_forms = []
+
     form_groups = None
     sheet_submissions = None
     participated = None
     recent_forms = []
     if request.user.is_authenticated:
         loggedin_user = get_object_or_404(Person, userid=request.user.username)
-        forms = Form.objects.filter(active=True).exclude(initiators='NON').order_by('unit__name', 'title')
+        forms = Form.objects.filter(active=True, unit__in=units).exclude(initiators='NON').order_by('unit__name', 'title')
         forms = [form for form in forms if not form.unlisted()]
         # forms recently initiated by user
         recent_forms = SheetSubmission.objects.filter(filler=_userToFormFiller(loggedin_user), \
@@ -1003,23 +1079,39 @@ def index(request):
         # If the user is authenticated, see if they have forms that are done in which they participated.
         participated = SheetSubmission.objects.filter(filler=_userToFormFiller(loggedin_user))\
             .exclude(form_submission__initiator=_userToFormFiller(loggedin_user)).count() > 0
+        # only provide navigation options to other faculties if they have at least one available form
+        for unit_option in unit_options:
+            unit_forms = Form.objects.filter(active=True, unit__in=Unit.sub_units([unit_option])).exclude(initiators='NON')
+            unit_forms = [form for form in unit_forms if not form.unlisted()]
+            if len(unit_forms) > 0:
+                unit_options_with_forms.append(unit_option)
+
     else:
-        forms = Form.objects.filter(active=True, initiators='ANY').order_by('unit__name', 'title')
+        forms = Form.objects.filter(active=True, initiators='ANY', unit__in=units).order_by('unit__name', 'title')
         forms = [form for form in forms if not form.unlisted()]
-        other_forms = Form.objects.filter(active=True, initiators='LOG')
+        other_forms = Form.objects.filter(active=True, initiators='LOG', unit__in=units)
         other_forms = [form for form in other_forms if not form.unlisted()]
+        # only provide navigation options to other faculties if they have at least one available form
+        for unit_option in unit_options:
+            unit_forms = Form.objects.filter(active=True, initiators__in=['ANY', 'LOG'], unit__in=Unit.sub_units([unit_option]))
+            unit_forms = [form for form in unit_forms if not form.unlisted()]
+            if len(unit_forms) > 0:
+                unit_options_with_forms.append(unit_option)   
 
     form_admin = Role.objects_fresh.filter(role__in=['ADMN', 'FORM'], person__userid=request.user.username).count() > 0
 
     context = {'forms': forms, 'recent_forms': recent_forms, 'other_forms': other_forms, 'sheet_submissions': sheet_submissions,
-               'form_groups': form_groups, 'form_admin': form_admin, 'participated': participated}
+               'form_groups': form_groups, 'form_admin': form_admin, 'participated': participated, 'unit': unit, 'unit_options': unit_options_with_forms}
     return render(request, 'onlineforms/submissions/forms.html', context)
 
 @login_required()
-def formSearchAutocomplete(request):
+def formSearchAutocomplete(request, unit_slug=PRIMARY_FACULTY_UNIT):
+    unit = Unit.objects.get(label=unit_slug.upper())
+    units = Unit.sub_units([unit])
+
     if request.is_ajax():
         q = request.GET.get('term', '').capitalize()
-        forms = Form.objects.filter(active=True).exclude(initiators='NON').order_by('unit__name', 'title')
+        forms = Form.objects.filter(active=True, unit__in=units).exclude(initiators='NON').order_by('unit__name', 'title')
         forms = forms.filter(Q(title__contains=q) | Q(description__contains=q))
         search_forms = [form for form in forms if not form.unlisted()]
         results = []
@@ -1027,7 +1119,7 @@ def formSearchAutocomplete(request):
             results.append({"unit": r.unit.name, "title": r.title, "description": r.description, "value": r.slug})
         data = json.dumps(results)
     else:
-        return HttpResponseRedirect(reverse('onlineforms:index'))
+        return HttpResponseRedirect(reverse('onlineforms:index'), kwargs={'unit_slug': unit.label})
     mimetype = 'application/json'
     return HttpResponse(data, mimetype)
 
@@ -1550,7 +1642,7 @@ def _sheet_submission(request, form_slug, formsubmit_slug=None, sheet_slug=None,
                 form_submission = get_object_or_404(FormSubmission, form=owner_form, slug=formsubmit_slug)
             except FormSubmission.MultipleObjectsReturned:
                 # some formsubmissions by an attacker have raced their way to identical slugs.
-                return Http404()
+                raise Http404()
             sheet_submission = get_object_or_404(SheetSubmission, sheet__original=sheet.original,
                                                  form_submission=form_submission, slug=sheetsubmit_slug)
             sheet = sheet_submission.sheet # revert to the old version that the user was working with.

@@ -21,9 +21,9 @@ from optparse import make_option
 from django.conf import settings
 
 grad_programs = {}
-grad_programs['COMP SCI'] = ['CPPHD', 'CPPZU', 'CPMSC', 'CPMCW', 'CPMZU', 'CPGND', 'CPGQL', 'CPMBD']
+grad_programs['COMP SCI'] = ['CPPHD', 'CPPZU', 'CPMSC', 'CPMCW', 'CPMZU', 'CPGND', 'CPGQL', 'CPMBD', 'CPMC', 'CPMVC', 'CPPMS']
 grad_programs['ENG SCI'] = ['ESPHD', 'ESMAS', 'ESMEN']
-grad_programs['MECH SYS'] = ['MSMAS', 'MSEPH', 'MSEMS'] 
+grad_programs['MECH SYS'] = ['MSMAS', 'MSEPH', 'MSEMS', 'MESMS', 'MSEGX', 'MECHVRS'] 
 
 class Command(BaseCommand):
     """ Usage: 
@@ -73,9 +73,15 @@ class Command(BaseCommand):
                 'CPGND': GradProgram.objects.get(label="Special", unit=cmptunit),
                 'CPGQL': GradProgram.objects.get(label="Qualifying", unit=cmptunit),
                 'CPMBD': GradProgram.objects.get(label="MSc Big Data", unit=cmptunit),
-
+                'CPMC': GradProgram.objects.get(label="Prof Msc Cybersec", unit=cmptunit),
+                'CPMVC': GradProgram.objects.get(label="Prof Msc Visual Comp", unit=cmptunit),
+                'CPPMS': GradProgram.objects.get(label="Prof MSc", unit=cmptunit),
+                
                 'MSEPH': GradProgram.objects.get(label="Ph.D.", unit=mechunit),
                 'MSEMS': GradProgram.objects.get(label="M.A.Sc.", unit=mechunit),
+                'MESMS': GradProgram.objects.get(label="M.Eng.", unit=mechunit),
+                'MSEGX': GradProgram.objects.get(label="GrExc", unit=mechunit),
+                'MECHVRS': GradProgram.objects.get(label="V.R.S.", unit=mechunit),
                 'ESMAS': GradProgram.objects.get(label="M.A.Sc.", unit=enscunit),
                 'ESMEN': GradProgram.objects.get(label="M.Eng.", unit=enscunit),
                 'ESPHD': GradProgram.objects.get(label="Ph.D.", unit=enscunit)

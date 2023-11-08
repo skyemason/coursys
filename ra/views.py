@@ -330,6 +330,7 @@ class RANewRequestWizard(SessionWizardView):
                 setattr(req, field, value)
 
         req.author = get_object_or_404(Person, userid=self.request.user.username)
+        req.mitacs = ""
 
         if req.hiring_category=="GRAS":
             req.ra_payment_method = None
@@ -749,8 +750,9 @@ def view_request(request: HttpRequest, ra_slug: str) -> HttpResponse:
     nc_hourly = (non_cont and req.nc_payment_method=="H")
     nc_bw = (non_cont and req.nc_payment_method=="BW")
     nonstudent = req.student=="N"
-    show_research = nonstudent or not req.mitacs
+    show_research = nonstudent or not req.usra
     show_thesis = not nonstudent and req.research
+    show_mitacs = (req.mitacs == True or req.mitacs == False)
     is_processor = (user == req.processor)
 
     adminform = RARequestAdminForm(instance=req)
@@ -759,7 +761,7 @@ def view_request(request: HttpRequest, ra_slug: str) -> HttpResponse:
         {'req': req, 'person': person, 'supervisor': supervisor, 'nonstudent': nonstudent, 'no_id': req.nonstudent,
          'author': author, 'graduate_research_assistant': graduate_research_assistant, 'research_assistant': research_assistant, 'non_cont': non_cont, 
          'gras_le': gras_le, 'gras_ls': gras_ls, 'gras_bw': gras_bw, 'ra_hourly': ra_hourly, 'ra_bw': ra_bw, 'nc_bw': nc_bw, 'nc_hourly': nc_hourly, 
-         'show_thesis': show_thesis, 'show_research': show_research, 'adminform': adminform, 'admin': admin, 
+         'show_thesis': show_thesis, 'show_research': show_research, 'show_mitacs': show_mitacs, 'adminform': adminform, 'admin': admin, 
          'permissions': request.units, 'status': req.status(), 'is_processor': is_processor})
 
 @requires_role("FUND")
@@ -892,7 +894,12 @@ def request_offer_letter(request: HttpRequest, ra_slug: str) -> HttpResponse:
         signer=req.supervisor,
         cosigner_lines=[req.get_cosigner_line(), req.get_first_name() + " " + req.get_last_name()])
     contents.add_paragraphs(["Dear " + req.get_name()])
-    contents.add_paragraphs(req.letter_paragraphs())
+    try:
+        contents.add_paragraphs(req.letter_paragraphs())
+    except ValueError as e:
+        messages.error(request, f'Could not render letter. Error was: {e}')
+        return HttpResponseRedirect(reverse('ra:request_offer_letter_update', kwargs={'ra_slug': req.slug}))
+
     letter.add_letter(contents)
     letter.write()
     return response
@@ -1236,7 +1243,7 @@ def download(request, current=False):
 
     writer = csv.writer(response)
     if admin:
-        writer.writerow(['Status', 'Appointee Name', 'Appointee Email', 'ID', 'Unit', 'Fund', 'Project', 'Supervisor', 'Supervisor Email', 'Start Date', 'End Date', 'Hiring Category', 'Total Pay', 'SWPP', 'Appointee Co-op Status', 'USRA', 'Mitacs', 'Processed By', 'Student Status', 'Object Code', 'True Scholarship Questionnaire'])
+        writer.writerow(['Status', 'Appointee Name', 'Appointee Email', 'ID', 'Unit', 'Position Title', 'Fund', 'Project', 'Supervisor', 'Supervisor Email', 'Start Date', 'End Date', 'Hiring Category', 'Total Pay', 'SWPP', 'Appointee Co-op Status', 'USRA', 'Mitacs', 'Processed By', 'Student Status', 'Object Code', 'True Scholarship Questionnaire'])
         for ra in ras:
             if ra.complete:
                 status = "Complete"
@@ -1246,7 +1253,7 @@ def download(request, current=False):
                 usra = " (USRA)"
             else:
                 usra = ""
-            writer.writerow([status, ra.get_sort_name(), ra.get_email_address(), ra.get_id(), ra.unit.label, ra.get_funds(), ra.get_projects(), ra.supervisor.sortname(), ra.supervisor.email(), ra.start_date, ra.end_date, ra.hiring_category + usra, ra.total_pay, ra.swpp, ra.coop, ra.usra, ra.mitacs, ra.get_processor(), ra.get_student_status(), ra.object_code,  ra.get_scholarship_confirmation_complete()])
+            writer.writerow([status, ra.get_sort_name(), ra.get_email_address(), ra.get_id(), ra.unit.label, ra.position, ra.get_funds(), ra.get_projects(), ra.supervisor.sortname(), ra.supervisor.email(), ra.start_date, ra.end_date, ra.hiring_category + usra, ra.total_pay, ra.swpp, ra.coop, ra.usra, ra.mitacs, ra.get_processor(), ra.get_student_status(), ra.object_code,  ra.get_scholarship_confirmation_complete()])
     else:
         writer.writerow(['Appointee Name', 'ID', 'Unit', 'Fund', 'Project', 'Supervisor', 'Start Date', 'End Date', 'Hiring Category', 'Total Pay'])
         for ra in ras:

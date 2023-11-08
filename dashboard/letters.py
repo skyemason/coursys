@@ -853,14 +853,25 @@ class RARequestForm(SFUMediaMixin):
         non_continuing = (cat=="NC")
         graduate_research_assistant = (cat=="GRAS")
         self.c.setFont("Helvetica", 7)
-        self._checkbox(1.5*mm, 205*mm, text="Research Assistant", filled=research_assistant)
-        self._checkbox(1.5*mm, 200*mm, text="Research Support", filled=False)
-        self._checkbox(100*mm, 205*mm, text="Other Non-Continuing", filled=non_continuing)
-        self._checkbox(50*mm, 200*mm, text="Lump Sum: Postdoctoral Fellow", filled=False)
-        self._checkbox(50*mm, 205*mm, text="Recreation Services Staff", filled=False)
+        self._checkbox(1.5*mm, 206*mm, text="Research Assistant", filled=research_assistant)
+        self._checkbox(1.5*mm, 201*mm, text="Research Support", filled=False)
+        self._checkbox(100*mm, 206*mm, text="Other Non-Continuing", filled=non_continuing)
+        self._checkbox(50*mm, 201*mm, text="Lump Sum: Postdoctoral Fellow", filled=False)
+        self._checkbox(50*mm, 206*mm, text="Recreation Services Staff", filled=False)
 
-        self._checkbox(150*mm, 205*mm, text="Graduate Scholarship", filled=graduate_research_assistant)
-        self._checkbox(150*mm, 200*mm, text="National Scholarship", filled=False)
+        self._checkbox(150*mm, 206*mm, text="Graduate Scholarship", filled=graduate_research_assistant)
+        self._checkbox(150*mm, 201*mm, text="National Scholarship", filled=False)
+
+        # bc employment 
+        self.c.setLineWidth(0.3)
+        self.c.linkURL('https://www2.gov.bc.ca/gov/content/employment-business/employment-standards-advice/employment-standards/forms-resources/igm', (2*mm, 200.5*mm, 24*mm, 200*mm), relative=1)
+        self.c.line(1*mm, 198.8*mm, 25.5*mm, 198.8*mm)
+        self.c.linkURL('http://www.sfu.ca/policies.html', (2*mm, 200*mm, 22.5*mm, 199*mm), relative=1)
+        self.c.line(1*mm, 198.8*mm - 4, 21*mm, 198.8*mm - 4)
+        self.c.setFont("Helvetica", 3.25)
+        self.c.drawString(1*mm, 199*mm, "BC’S EMPLOYMENT STANDARDS ACT (ESA) PROVIDES EMPLOYERS AND EMPLOYEES WITH GUIDELINES TO ENSURE THE CONSISTENT AND LEGAL APPLICATION OF EMPLOYMENT PRACTICES AND EMPLOYEE RIGHTS. REFER TO THE ESA WEBSITE AND ")
+        self.c.drawString(1*mm, 199*mm - 4, "SFU’S POLICIES AND PROCEDURES FOR FACTS AND PROCEDURAL INFORMATION. NOTE THAT CERTAIN CLAUSES IN COLLECTIVE AGREEMENTS WILL SUPERSEDE LANGUAGE IN THE ESA AND VICE VERSA.")
+        self.c.setLineWidth(1)
         
         self.c.setFont("Helvetica-Bold", 10)
         self.c.setFillColor(self.sfu_red)
@@ -2469,18 +2480,29 @@ class TAForm(object):
         date = datetime.date.today()
         self.c.drawString(10*mm, 2*mm, str(date))
 
+        # links
+        self.c.setLineWidth(0.3)
+        self.c.linkURL('https://www2.gov.bc.ca/gov/content/employment-business/employment-standards-advice/employment-standards/forms-resources/igm', (1*mm, -4*mm, 24*mm, -3.5*mm), relative=1)
+        self.c.line(1*mm, -5.2*mm, 25.5*mm, -5.2*mm)
+        self.c.linkURL('http://www.sfu.ca/policies.html', (140*mm, -4*mm, 167*mm, -3.5*mm), relative=1)
+        self.c.setLineWidth(0.3)
+        self.c.line(143.1*mm, -5.2*mm, 163.1*mm, -5.2*mm)
+        self.c.setLineWidth(1)
+
         # footer
         self.c.setFont("Helvetica", self.LABEL_SIZE)
         self.c.drawString(1*mm, -3*mm, "ORIGINAL: DEAN     COPY : EMPLOYEE     COPY : DEPARTMENT     COPY : UNION (IF TSSU APP'T)     COPY: PAYROLL")
         self.c.setFont("Helvetica", 3.25)
-        self.c.drawString(1*mm, -5*mm, "THE INFORMATION ON THIS FORM IS COLLECTED UNDER THE AUTHORITY OF THE UNIVERSITY ACT (RSBC 1996, C.468), THE INCOME TAX ACT, THE PENSION PLAN ACT, THE EMPLOYMENT INSURANCE ACT, THE FINANCIAL INFORMATION ACT OF BC, AND THE WORKERS COMPENSATION ACT OF BC. THE")
-        self.c.drawString(1*mm, -5*mm - 4, "INFORMATION ON THIS FORM IS USED BY THE UNIVERSITY FOR PAYROLL AND BENEFIT PLAN ADMINISTRATION, STATISTICAL COMPILATIONS AND OPERATING PROGRAMS AND ACTIVITIES AS REQUIRED BY UNIVERSITY POLICIES. THE INFORMATION ON THIS FORM IS DISCLOSED TO GOVERNMENT AGENCIES")
-        self.c.drawString(1*mm, -5*mm - 8, "AS REQUIRED BY THE GOVERNMENT ACTS. YOUR BANKING INFORMATION IS DISCLOSED TO FINANCIAL INSITUTIONS FOR THE PURPOSE OF DIRECT DEPOSIT. IN ACCORDANCE WITH THE FINANCIAL INFORMATION ACT OF BC, YOUR NAME AND REMUNERATION IS PUBLIC INFORMATION AND MAY BE")
-        self.c.drawString(1*mm, -5*mm - 12, "PUBLISHED.")
-        self.c.drawString(1*mm, -5*mm - 20, "IF YOU HAVE ANY QUESTIONS ABOUT THE COLLECTION AND USE OF THIS INFORMATION, PLEASE CONTACT THE SIMON FRASER UNIVERSITY PAYROLL SUPERVISOR.")
+        self.c.drawString(1*mm, -5*mm, "BC’S EMPLOYMENT STANDARDS ACT (ESA) PROVIDES EMPLOYERS AND EMPLOYEES WITH GUIDELINES TO ENSURE THE CONSISTENT AND LEGAL APPLICATION OF EMPLOYMENT PRACTICES AND EMPLOYEE RIGHTS. REFER TO THE ESA WEBSITE AND SFU’S POLICIES AND PROCEDURES FOR FACTS AND PROCEDURAL")
+        self.c.drawString(1*mm, -5*mm - 4, "INFORMATION. NOTE THAT CERTAIN CLAUSES IN COLLECTIVE AGREEMENTS WILL SUPERSEDE LANGUAGE IN THE ESA AND VICE VERSA.")
+        self.c.drawString(1*mm, -5*mm - 8, "THE INFORMATION ON THIS FORM IS COLLECTED UNDER THE AUTHORITY OF THE UNIVERSITY ACT (RSBC 1996, C.468), THE INCOME TAX ACT, THE PENSION PLAN ACT, THE EMPLOYMENT INSURANCE ACT, THE FINANCIAL INFORMATION ACT OF BC, AND THE WORKERS COMPENSATION ACT OF BC. THE")
+        self.c.drawString(1*mm, -5*mm - 12, "INFORMATION ON THIS FORM IS USED BY THE UNIVERSITY FOR PAYROLL AND BENEFIT PLAN ADMINISTRATION, STATISTICAL COMPILATIONS AND OPERATING PROGRAMS AND ACTIVITIES AS REQUIRED BY UNIVERSITY POLICIES. THE INFORMATION ON THIS FORM IS DISCLOSED TO GOVERNMENT AGENCIES")
+        self.c.drawString(1*mm, -5*mm - 16, "AS REQUIRED BY THE GOVERNMENT ACTS. YOUR BANKING INFORMATION IS DISCLOSED TO FINANCIAL INSITUTIONS FOR THE PURPOSE OF DIRECT DEPOSIT. IN ACCORDANCE WITH THE FINANCIAL INFORMATION ACT OF BC, YOUR NAME AND REMUNERATION IS PUBLIC INFORMATION AND MAY BE")
+        self.c.drawString(1*mm, -5*mm - 20, "PUBLISHED.")
+        self.c.drawString(1*mm, -5*mm - 28, "IF YOU HAVE ANY QUESTIONS ABOUT THE COLLECTION AND USE OF THIS INFORMATION, PLEASE CONTACT THE SIMON FRASER UNIVERSITY PAYROLL SUPERVISOR.")
 
         self.c.setFont("Helvetica-Bold", self.LABEL_SIZE)
-        self.c.drawString(1*mm, -18*mm, "Updated April 2016 (produced by %s TAForm)" % (product_name(hint='admin'),))
+        self.c.drawString(1*mm, -18*mm, "Updated June 2023 (produced by %s TAForm)" % (product_name(hint='admin'),))
 
         self.c.showPage()
 

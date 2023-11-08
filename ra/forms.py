@@ -53,9 +53,9 @@ OBJECT_CHOICES = (
 # model with a single entry doesn't seem quite right? django-dbsettings?
 
 # deal with upcoming minimum wage increases (only one at a time)
-NEW_MIN_WAGE_DATE = datetime.date(2022, 6, 1) # Update to most recent or upcoming minimum wage increase date, once known
-NEW_MIN_WAGE = 15.65 # Update to most recent or upcoming new minimum wage, once known
-MIN_WAGE = 15.20 # Update to new minimum wage once another upcoming minimum wage is known 
+NEW_MIN_WAGE_DATE = datetime.date(2023, 6, 1) # Update to most recent or upcoming minimum wage increase date, once known
+NEW_MIN_WAGE = 16.75 # Update to most recent or upcoming new minimum wage, once known
+MIN_WAGE = 15.65 # Update to new minimum wage once another upcoming minimum wage is known 
 
 def get_minimum_wage(date):
     if date >= NEW_MIN_WAGE_DATE:
@@ -98,7 +98,6 @@ class RARequestIntroForm(forms.ModelForm):
     student = forms.ChoiceField(required=True, choices=STUDENT_TYPE, widget=forms.RadioSelect, label="Is the appointee a student?")
     coop = forms.ChoiceField(required=False, widget=forms.RadioSelect, choices=BOOL_CHOICES, label="Is the appointee a co-op student?")
     usra = forms.ChoiceField(required=False, widget=forms.RadioSelect, choices=BOOL_CHOICES, label=" Is this an Undergraduate Student Research Awards (USRA) faculty supplement?")
-    mitacs = forms.ChoiceField(required=False, widget=forms.RadioSelect, choices=BOOL_CHOICES, label="Will the appointment be funded by a Mitacs scholarship in the Appointee’s own name?")
     research = forms.ChoiceField(required=False, widget=forms.RadioSelect, choices=BOOL_CHOICES, label="Will the work performed primarily involve research?")
     thesis = forms.ChoiceField(required=False, widget=forms.RadioSelect, choices=BOOL_CHOICES, label="Is the appointment for the student's thesis/project?")
 
@@ -121,7 +120,7 @@ class RARequestIntroForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(RARequestIntroForm, self).__init__(*args, **kwargs)
         
-        config_init = ['people_comments', 'coop', 'usra', 'mitacs', 'student', 'thesis', 'research', 'position']
+        config_init = ['people_comments', 'coop', 'usra', 'student', 'thesis', 'research', 'position']
 
         for field in config_init:
             self.initial[field] = getattr(self.instance, field)
@@ -134,7 +133,7 @@ class RARequestIntroForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
 
-        config_clean = ['people_comments', 'coop', 'usra', 'mitacs', 'student', 'thesis', 'research', 'position']
+        config_clean = ['people_comments', 'coop', 'usra', 'student', 'thesis', 'research', 'position']
 
         for field in config_clean:
             setattr(self.instance, field, cleaned_data[field])
@@ -169,7 +168,6 @@ class RARequestIntroForm(forms.ModelForm):
 
         student = cleaned_data.get('student')
         coop = cleaned_data.get('coop')
-        mitacs = cleaned_data.get('mitacs')
         research = cleaned_data.get('research')
         thesis = cleaned_data.get('thesis')
         error_message = 'You must answer this question.'
@@ -182,14 +180,11 @@ class RARequestIntroForm(forms.ModelForm):
             if (student == 'U') and (usra == None or usra == ''):
                 self.add_error('usra', error_message)
             if (student == 'M' or student == 'P') or usra=='False':
-                if mitacs == None or mitacs == '':
-                    self.add_error('mitacs', error_message)
-                if mitacs == 'False':
-                    if research == None or research == '':
-                        self.add_error('research', error_message)
-                    if research == 'True':
-                        if thesis == None or thesis == '':
-                            self.add_error('thesis', error_message)
+                if research == None or research == '':
+                    self.add_error('research', error_message)
+                if research == 'True':
+                    if thesis == None or thesis == '':
+                        self.add_error('thesis', error_message)
 
         hiring_category = cleaned_data.get('hiring_category')
         if hiring_category == None or hiring_category == 'None':
@@ -205,20 +200,14 @@ class RARequestIntroForm(forms.ModelForm):
             self.cleaned_data['email_address'] = ''
         if (student=='N'):
             self.cleaned_data['coop'] = False
-            self.cleaned_data['mitacs'] = False
             self.cleaned_data['thesis'] = False
             self.cleaned_data['usra'] = False
         elif (student=='U' or student == 'M' or student == 'P'):
             if (student=='U' and usra=='True'):
-                self.cleaned_data['mitacs'] = False
                 self.cleaned_data['thesis'] = False
                 self.cleaned_data['research'] = False
             else:
-                if (mitacs=='True'):
-                    self.cleaned_data['research'] = False
-                    self.cleaned_data['thesis'] = False
-                    self.cleaned_data['usra'] = False
-                elif (research=='False'):
+                if research=='False':
                     self.cleaned_data['thesis'] = False
                     self.cleaned_data['usra'] = False
 
@@ -507,7 +496,7 @@ class RARequestGraduateResearchAssistantForm(forms.ModelForm):
     scholarship_confirmation_1 = forms.ChoiceField(required=True, widget=forms.RadioSelect, choices=BOOL_CHOICES, label="a) primarily contribute to the student’s academic progress, for example by inclusion in the student’s thesis?")
     scholarship_confirmation_2 = forms.ChoiceField(required=True, widget=forms.RadioSelect, choices=BOOL_CHOICES, label="b) primarily contribute to or benefit someone other than the student, for example by supporting your research program or the grant?")
     scholarship_confirmation_3 = forms.ChoiceField(required=True, widget=forms.RadioSelect, choices=BOOL_CHOICES, label=mark_safe("c) <u>are not</u> meant to be included in the student’s thesis?"))
-    scholarship_confirmation_4 = forms.ChoiceField(required=True, widget=forms.RadioSelect, choices=BOOL_CHOICES, label=mark_safe("d) <u>are not</u> meant to part of the student’s education in the student’s academic discipline?"))
+    scholarship_confirmation_4 = forms.ChoiceField(required=True, widget=forms.RadioSelect, choices=BOOL_CHOICES, label=mark_safe("d) <u>are not</u> meant to be part of the student’s education in the student’s academic discipline?"))
     scholarship_confirmation_5 = forms.ChoiceField(required=True, widget=forms.RadioSelect, choices=BOOL_CHOICES, label="a) ask the student to perform research or research-related activities at specific times or places?")
     scholarship_confirmation_6 = forms.ChoiceField(required=True, widget=forms.RadioSelect, choices=BOOL_CHOICES, label="b) require the student to track and/or report the hours during which the student is performing research or research-related activities?")
     scholarship_confirmation_7 = forms.ChoiceField(required=True, widget=forms.RadioSelect, choices=BOOL_CHOICES, label="c) ask or expect the student to perform a specified amount of research or research-related activities in a given week?")
@@ -769,7 +758,7 @@ class RARequestResearchAssistantForm(forms.ModelForm):
     
     ra_benefits = forms.ChoiceField(required=True, choices=RA_BENEFITS_CHOICES, widget=forms.RadioSelect, 
                                     label='Are you willing to provide extended health benefits?', 
-                                    help_text=mark_safe('<a href="https://www.sfu.ca/content/dam/sfu/human-resources/forms-documents/benefits/TSSU/RA%20Summary%20April%202022v2.pdf">Please click here and refer to "Summary of RA Benefit Plan" for the cost of each medical and dental care plan</a>'))
+                                    help_text=mark_safe('<a href="http://www.sfu.ca/content/dam/sfu/human-resources/forms-documents/benefits/Research_PDF/Research%20Benefit%20Summary%20-%20Fall%202023.pdf">Please click here and refer to "Summary of RA Benefit Plan" for the cost of each medical and dental care plan</a>'))
 
     swpp = forms.ChoiceField(required=False, widget=forms.RadioSelect, choices=BOOL_CHOICES, label="Are you planning to apply for student wage subsidy through the Student Work Placement Program (SWPP)?",
                              help_text=mark_safe('<a href="https://www.sfu.ca/hire/covid19/funding.html">Please click here for information about SWPP</a>'))

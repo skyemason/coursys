@@ -34,7 +34,7 @@ forms_patterns = [
     url(r'^admin/completed/' + FORM_SLUG + '/waiting_summary$', onlineforms_views.waiting_summary_csv,
         name='waiting_summary_csv'),
     url(r'^admin/bulk_close/', onlineforms_views.bulk_close, name='bulk_close'),
-
+    url(r'^admin/completed/' + FORM_SLUG + '/download_result_csv$', onlineforms_views.download_result_csv, name='download_result_csv'),
     url(r'^admin/' + FORM_SLUG + '/' + FORMSUBMIT_SLUG + '/assign$', onlineforms_views.admin_assign, name='admin_assign'),
     url(r'^admin/' + FORM_SLUG + '/' + FORMSUBMIT_SLUG + '/assign-nonsfu$', onlineforms_views.admin_assign_nonsfu, name='admin_assign_nonsfu'),
     url(r'^admin/' + FORM_SLUG + '/' + FORMSUBMIT_SLUG + '/give', onlineforms_views.admin_change_owner, name='admin_change_owner'),
@@ -54,7 +54,9 @@ forms_patterns = [
     url(r'^manage/' + FORM_SLUG + '/edit/' + SHEET_SLUG + '/field-' + FIELD_SLUG + '$', onlineforms_views.edit_field, name='edit_field'),
 
     url(r'^$', onlineforms_views.index, name='index'),
-    url(r'^ajax_calls/form_search/', onlineforms_views.formSearchAutocomplete),
+    url(r'^(?P<unit_slug>[\w-]+)/ajax_calls/form_search/$', onlineforms_views.formSearchAutocomplete),
+    url(r'^index/(?P<unit_slug>[\w-]+)$', onlineforms_views.index, name='index'),
+    url(r'^index/(?P<unit_slug>[\w-]+)/ajax_calls/form_search/$', onlineforms_views.formSearchAutocomplete),
     url(r'^login/$', onlineforms_views.login, name='login'),
     url(r'^bulk$', onlineforms_views.bulk_assign, name='bulk_assign'),
     url(r'^participated/$', onlineforms_views.participated_in, name='participated_in'),

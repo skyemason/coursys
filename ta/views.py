@@ -15,7 +15,7 @@ from ta.models import TUG, Skill, SkillLevel, TAApplication, TAPosting, TAContra
     HOLIDAY_HOURS_PER_BU, LAB_PREP_HOURS, TAContractEmailText
 from tacontracts.models import TACourse as NewTACourse
 from ra.models import Account
-from grad.models import GradStudent, STATUS_REAL_PROGRAM
+from grad.models import GradStudent, STATUS_REAL_PROGRAM, STATUS_ACTIVE
 from dashboard.models import NewsItem
 from coredata.models import Member, Role, CourseOffering, Person, Semester, CAMPUSES, CombinedOffering
 from coredata.queries import more_personal_info, SIMSProblem, ensure_person_from_userid
@@ -34,6 +34,7 @@ import csv
 from ta.templatetags import ta_display
 import json
 from . import bu_rules
+import iso8601;
 
 locale.setlocale( locale.LC_ALL, 'en_CA.UTF-8' ) #fiddle with this if you cant get the following function to work
 def _format_currency(i):
@@ -44,7 +45,7 @@ def _format_currency(i):
 def _create_news(person, url, from_user, accept_deadline):
 
     # attempt to e-mail the student's supervisor
-    gradstudents = GradStudent.get_canonical(person)
+    gradstudents = GradStudent.objects.filter(person=person, current_status__in=STATUS_ACTIVE)
     if len(gradstudents) > 0:
         gradstudent = gradstudents[0]
         # See if we can find a supervisor to notify.  The student shouldn't have Senior, CoSenior, and Potential
@@ -579,7 +580,8 @@ def _new_application(request, post_slug, manual=False, userid=None):
                     'skill_values': skill_values,
                     'skill_choices': LEVEL_CHOICES,
                     'instructions': posting.instructions(),
-                    'hide_campuses': posting.hide_campuses()
+                    'hide_campuses': posting.hide_campuses(),
+                    'send_notify': posting.send_notify()
                   }
     return render(request, 'ta/new_application.html', context)
 
@@ -851,7 +853,7 @@ def download_assign_csv(request, post_slug):
     response['Content-Disposition'] = 'inline; filename="%s-assigsnment-table.csv"' % (posting.slug)
     writer = csv.writer(response)
     writer.writerow(['Offering', 'Combined to (from SIMS)', 'Instructor', 'Enrollment', 'Campus', 'Assigned', 'Applicants', 'Required BU (by capacity)',
-                     'Required BU (by enrol)', 'Assigned BU', 'Diff'])
+                    'Required BU (by enrol)', 'Assigned BU', 'Remaining'])
     for o in offerings:
         enrollment_string = '%s/%s' % (o.enrl_tot, o.enrl_cap)
         if o.wait_tot:
@@ -888,7 +890,7 @@ def download_assign_csv(request, post_slug):
 
         writer.writerow([o.name(), newlist, o.instructors_str(), enrollment_string, o.get_campus_display(), assigned_string,
                          posting.applicant_count(o), posting.required_bu(o, count=o.enrl_cap), required_bus, posting.assigned_bu(o),
-                         posting.assigned_bu(o)-posting.required_bu(o)])
+                         posting.required_bu(o)-posting.assigned_bu(o)])
     return response
 
 
@@ -900,7 +902,7 @@ def assign_bus(request, post_slug, course_slug):
     instructors = offering.instructors()
     course_prefs = CoursePreference.objects.filter(app__posting=posting, course=offering.course, app__late=False).select_related('app')
     tacourses = TACourse.objects.filter(course=offering).select_related('contract__application__person')
-    all_applicants = TAApplication.objects.filter(posting=posting).select_related('person')
+    all_applicants = TAApplication.objects.filter(posting=posting).select_related('person').select_related('supervisor')
     descrs = CourseDescription.objects.filter(unit=posting.unit)
     if not descrs.filter(labtut=True) or not descrs.filter(labtut=False):
         messages.error(request, "Must have at least one course description for TAs with and without labs/tutorials before assigning TAs.")
@@ -1165,7 +1167,11 @@ def all_contracts(request, post_slug):
         courses = TACourse.objects.filter(contract=contract)
         for course in courses:
             crs_list += course.course.subject+" "+course.course.number+" "+course.course.section+" ("+str(course.total_bu)+")\n"
-        contract.crs_list = crs_list    
+        contract.crs_list = crs_list
+        if contract.status == 'ACC' and contract.config.get('accepted_date') is not None:            
+            contract.accrej_date = iso8601.parse_date(contract.config.get('accepted_date'))
+        if contract.status == 'REJ' and contract.config.get('rejected_date') is not None:
+            contract.accrej_date = iso8601.parse_date(contract.config.get('rejected_date'))    
             
     #postings = TAPosting.objects.filter(unit__in=request.units).exclude(Q(semester=posting.semester))
     applications = TAApplication.objects.filter(posting=posting).exclude(Q(id__in=TAContract.objects.filter(posting=posting).values_list('application', flat=True)))
@@ -1188,7 +1194,7 @@ def contracts_table_csv(request, post_slug):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'inline; filename="%s-table.csv"' % (posting.slug)
     writer = csv.writer(response)
-    writer.writerow(['Person', 'Email', 'Citizenship', 'Appt Category', 'Rank', 'Status', 'Total BU', 'TA Courses', 'Deadline'])
+    writer.writerow(['Person', 'Email', 'Citizenship', 'Appt Category', 'Rank', 'Status', 'Acc/Rej Date', 'Total BU', 'TA Courses', 'Deadline'])
     for c in contracts:
         citizen = ''
         if c.application.person.citizen():
@@ -1199,8 +1205,15 @@ def contracts_table_csv(request, post_slug):
             citizen += "(visa: "+ str(c.application.person.visa()) + ")"
         else:
             citizen += "(visa: unknown)"
+
+        statusdate = ''
+        if c.status == 'ACC' and c.config.get('accepted_date') is not None:            
+            statusdate = iso8601.parse_date(c.config.get('accepted_date')).strftime("%Y/%m/%d")
+        if c.status == 'REJ' and c.config.get('rejected_date') is not None:
+            statusdate = iso8601.parse_date(c.config.get('rejected_date')).strftime("%Y/%m/%d")
+
         writer.writerow([c.application.person, c.application.person.email(), citizen, c.get_appt_category_display() + '(' + c.appt_category + ')',
-                         c.application.rank, c.get_status_display(), c.total_bu(), c.crs_list, c.deadline])
+                         c.application.rank, c.get_status_display(), statusdate, c.total_bu(), c.crs_list, c.deadline])
     return response
 
 
@@ -1302,14 +1315,28 @@ def accept_contract(request, post_slug, userid, preview=False):
            
             if "reject" in request.POST:
                 contract.status = 'REJ'
+                contract.config['rejected_date'] = datetime.datetime.now()
+                if 'send_notify' in posting.config and posting.config['send_notify']:
+                    contract.send_notify('rejected')
+                l = LogEntry(userid=request.user.username,
+                        description="TA Rejected for %s (%s in %s)." % (contract.application.person.userid, contract.application.posting.semester, contract.application.posting.unit),
+                        related_object=contract.application)
+                l.save()
             elif "accept" in request.POST:
                 contract.status = 'ACC'
+                contract.config['accepted_date'] = datetime.datetime.now()
+                if 'send_notify' in posting.config and posting.config['send_notify']:
+                    contract.send_notify('accepted')
             contract.save()
             messages.success(request, "Successfully %s the offer." % (contract.get_status_display()))
             
             # Do this after the save, just in case something went wrong during saving:
             if "accept" in request.POST:
                 contract.email_contract()
+                l = LogEntry(userid=request.user.username,
+                        description="TA Accepted and contract sent to %s email %s." % (contract.application.person.userid, contract.application.person.email()),
+                        related_object=contract.application)
+                l.save()
                 messages.info(request, "You should be receiving an email with your contract attached.")
 
             ##not sure where to redirect to...so currently redirects to itself
@@ -1978,6 +2005,10 @@ def generate_csv_by_course(request, post_slug):
     # collect all course preferences in a sensible way
     prefs = CoursePreference.objects.filter(app__posting=posting).exclude(rank=0).order_by('app__person').select_related('app', 'course')
     
+    # collect those applicants without choose any course
+    prefsappid = CoursePreference.objects.filter(app__posting=posting).exclude(rank=0).order_by('app__person').select_related('app', 'course').values_list('app_id', flat=True)
+    noprefs = TAApplication.objects.filter(posting=posting).exclude(id__in=prefsappid)
+
     # generate CSV
     filename = str(posting.slug) + '_by_course.csv'
     response = HttpResponse(content_type='text/csv')
@@ -2016,10 +2047,18 @@ def generate_csv_by_course(request, post_slug):
             offering_rows.append(row)
         offering_rows.append([])
 
+    noprefs_rows = []
+    for nopref in noprefs: 
+        noprefs_rows.append(['', nopref.person.sortname(), nopref.person.emplid, nopref.person.email(), nopref.category, nopref.get_current_program_display(), nopref.base_units])
+
     csvWriter.writerow(off)
     for row in offering_rows:
         csvWriter.writerow(row)
     
+    if len(noprefs) > 0:
+        csvWriter.writerow(['Below applicants have no course preference'])
+        for row in noprefs_rows:
+            csvWriter.writerow(row)
     return response
     
 @requires_role("TAAD")

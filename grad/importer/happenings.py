@@ -28,12 +28,17 @@ def build_program_map():
         'CPMCW': GradProgram.objects.get(label="MSc Course", unit=cmptunit),
         'CPGND': GradProgram.objects.get(label="Special", unit=cmptunit),
         'PMSCS': GradProgram.objects.get(label="Prof MSc", unit=cmptunit),
+        'CPMC': GradProgram.objects.get(label="Prof Msc Cybersec", unit=cmptunit),
+        'CPMVC': GradProgram.objects.get(label="Prof Msc Visual Comp", unit=cmptunit),
+        'CPPMS': GradProgram.objects.get(label="Prof MSc", unit=cmptunit),
     }
     engunit = Unit.objects.get(label="ENSC")
     mechunit = Unit.objects.get(label="MSE")
     program_map['MSEPH'] = GradProgram.objects.get(label="Ph.D.", unit=mechunit)
     program_map['MSEMS'] = GradProgram.objects.get(label="M.A.Sc.", unit=mechunit)
     program_map['MESMS'] = GradProgram.objects.get(label="M.Eng.", unit=mechunit)
+    program_map['MSEGX'] = GradProgram.objects.get(label="GrExc", unit=mechunit)
+    program_map['MECHVRS'] = GradProgram.objects.get(label="V.R.S.", unit=mechunit)
     program_map['ESMEN'] = GradProgram.objects.get(label="M.Eng.", unit=engunit)
     program_map['ESMAS'] = GradProgram.objects.get(label="M.A.Sc.", unit=engunit)
     program_map['ESPHD'] = GradProgram.objects.get(label="Ph.D.", unit=engunit)
@@ -82,6 +87,9 @@ def build_program_subplan_map():
         ('PMSCS', 'PMSCSBD'): GradProgram.objects.get(label="Prof MSc Big Data", unit=cmptunit),
         ('PMSCS', 'PMSCSVC'): GradProgram.objects.get(label="Prof MSc Visual Comp", unit=cmptunit),
         ('PMSCS', 'PMSCSCS'): GradProgram.objects.get(label="Prof MSc Cybersec", unit=cmptunit),
+        ('CPMSC', 'CPMSCTHES'): GradProgram.objects.get(label="MSc Thesis", unit=cmptunit),
+        ('CPMSC', 'CPMSCPROJ'): GradProgram.objects.get(label="MSc Proj", unit=cmptunit),
+        ('CPMSC', 'CPMSCCRSW'): GradProgram.objects.get(label="MSc Course", unit=cmptunit),
     }
     return program_subplan_map
 

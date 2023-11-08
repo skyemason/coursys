@@ -22,6 +22,7 @@ from courselib.storage import UploadedFileStorage, upload_path
 from django.template.loader import get_template
 from grad.models import GradStudent, Supervisor, STATUS_REAL_PROGRAM
 from . import bu_rules
+from django.utils import timezone
 
 LAB_BONUS_DECIMAL = decimal.Decimal('0.17')
 LAB_BONUS = float(LAB_BONUS_DECIMAL)
@@ -31,7 +32,7 @@ LAB_PREP_HOURS = 13 # min hours of prep for courses with tutorials/labs
 HOLIDAY_HOURS_PER_BU = decimal.Decimal('1.1')
 
 CMPT_WCOURSE_BU = decimal.Decimal('2')  # additional BU for writing course
-CMPT_COURSE_BU = decimal.Decimal('0.17') 
+CMPT_COURSE_BU = decimal.Decimal('1')
 
 DEPT_CHOICES = [
     ('CMPT', 'CMPT student'),
@@ -205,6 +206,7 @@ class TAPosting(models.Model):
         # 'extra_questions': additional questions to ask applicants
         # 'instructions': instructions for completing the TA Application
         # 'hide_campuses': whether or not to prompt for Campus
+        # 'send_notify': send email notification to contact person when someone accepts or declines an offer (default True)
 
     defaults = {
             'salary': ['0.00']*len(CATEGORY_CHOICES),
@@ -225,7 +227,8 @@ class TAPosting(models.Model):
             'export_seq': 0,
             'extra_questions': [],
             'instructions': '',
-            'hide_campuses': False
+            'hide_campuses': False,            
+            'send_notify': True
             }
     salary, set_salary = getter_setter('salary')
     scholarship, set_scholarship = getter_setter('scholarship')
@@ -244,6 +247,7 @@ class TAPosting(models.Model):
     extra_questions, set_extra_questions = getter_setter('extra_questions')
     instructions, set_instructions = getter_setter('instructions')
     hide_campuses, set_hide_campuses = getter_setter('hide_campuses')
+    send_notify, set_send_notify = getter_setter('send_notify')
     _, set_contact = getter_setter('contact')
     
     class Meta:
@@ -316,17 +320,20 @@ class TAPosting(models.Model):
         if self.unit.label in ["CMPT", "COMP"] and self.semester.name >= "1231":
             """
             new calculation for CMPT BU
-            all course: default + extra + 1.17 CMPT_COURSE_BU * TA
-            W course: default + extra + 2 CMPT_WCOURSE_BU + 1.17 CMPT_COURSE_BU * TA
-            labs: no formula 
+            CMPT_WCOURSE_BU = 2
+            CMPT_COURSE_BU = 1
+            LAB_BONUS_DECIMAL = 0.17 = Prep BU
+            W course: default + extra + 2 + ((1 + 0.17) * TA)
+            all course: default + extra + ((1 + 0.17) * TA)
+            labs: no additional BU given since all TA will get 0.17
             """
             default = self.default_bu(offering, count=count)
             extra = offering.extra_bu()        
             tacourses = TACourse.objects.filter(contract__posting=self, course=offering).exclude(contract__status__in=['REJ', 'CAN'])
             if offering.flags.write:
-                return default + extra + CMPT_WCOURSE_BU + decimal.Decimal(CMPT_COURSE_BU * len(tacourses)) 
+                return default + extra + CMPT_WCOURSE_BU + decimal.Decimal((CMPT_COURSE_BU + LAB_BONUS_DECIMAL) * len(tacourses)) 
             else:                
-                return default + extra + decimal.Decimal(CMPT_COURSE_BU * len(tacourses)) 
+                return default + extra + decimal.Decimal((CMPT_COURSE_BU + LAB_BONUS_DECIMAL)* len(tacourses)) 
         else:
             """
                 Actual BUs to assign to this course: default + extra + 0.17*number of TA's
@@ -573,7 +580,7 @@ class TAApplication(models.Model):
         skill = []
         taskill = SkillLevel.objects.filter(app=self)
         for s in taskill:
-            if s is not None and s.get_level_display() is not 'None':
+            if s is not None and s.get_level_display() != 'None':
                 skill.append(s.skill.name + ': '+ s.get_level_display())
         return ', '.join(skill)
 
@@ -674,7 +681,10 @@ class TAContract(models.Model):
     created_by = models.CharField(max_length=8, null=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    
+    config = JSONField(default=dict)
+    # 'accepted_date': last accept date for contract ('YYYY-MM-DD')
+    # 'rejected_date': last rejected date for contract ('YYYY-MM-DD')
+
     class Meta:
         unique_together = (('posting', 'application'),)
         
@@ -792,6 +802,15 @@ class TAContract(models.Model):
                    'application/pdf')
         msg.send()
 
+    def send_notify(self, status):
+        subject = 'TA %s has %s the TA offer for %s' % (self.application.person.name(), status, self.posting.semester)
+        content = 'TA %s has %s the TA offer for %s' % (self.application.person.name(), status, self.posting.semester)
+        
+        to_email = self.posting.contact().email()
+        from_email = settings.DEFAULT_FROM_EMAIL
+        msg = EmailMultiAlternatives(subject=subject, body=content, from_email=from_email,
+                                     to=[to_email], headers={'X-coursys-topic': 'ta'})        
+        msg.send()
 
 class CourseDescription(models.Model):
     """
@@ -830,7 +849,7 @@ class TACourse(models.Model):
         Return the prep BUs for this assignment
         """
         if self.contract.posting.unit.label in ["CMPT", "COMP"] and self.course.semester.name >= "1234":                           
-                return CMPT_COURSE_BU
+            return LAB_BONUS_DECIMAL
         else:
             if self.has_labtut():
                 # If the contract that is attached to this course has been cancelled/rejected, there

@@ -10,6 +10,7 @@ from courselib.search import find_userid_or_emplid
 from onlineforms.models import Form, Sheet, FIELD_TYPE_CHOICES, FIELD_TYPE_MODELS, FormGroup, VIEWABLE_CHOICES, NonSFUFormFiller
 from django.utils.safestring import mark_safe
 from django.forms.utils import ErrorList
+import datetime
 
 class DividerFieldWidget(forms.TextInput):
     def render(self, name, value, attrs=None, renderer=None):
@@ -162,9 +163,10 @@ class AdminAssignSheetForm(_AdminAssignForm):
     sheet = _FormModelChoiceField(required=True, queryset=Sheet.objects.none(), empty_label=None)
     assignee = PersonField(label='Assign to', required=True, needs_email=True)
     comment = forms.CharField(required=False, widget=forms.Textarea(attrs={'rows': '3', 'cols': '70'}),
-            help_text="Optional comment on the form: this becomes part of the form history. If you have additional info about this submission, you can record it here.")
+            help_text="Optional comment on the form: this becomes part of the form history. If you have additional info about this submission, \
+                you can record it here. Please note that assignee will see this comment on the screen.")
     note = forms.CharField(required=False, widget=forms.Textarea(attrs={'rows': '3', 'cols': '70'}),
-            help_text="Optional private note to the assignee")
+            help_text="Optional private note to the assignee. Please note that assignee will see this note on the email.")
 
     def __init__(self, query_set, *args, **kwargs):
         super(_AdminAssignForm, self).__init__(*args, **kwargs)
@@ -360,3 +362,12 @@ class BulkAssignForm(forms.Form):
             people.append(person)
 
         return people
+
+class SearchCompletedForm(forms.Form):    
+    fromdate = forms.DateField(label='Completed Date - From',  widget=forms.DateInput(format = '%Y-%m-%d'), input_formats=['%Y-%m-%d'], required=False)
+    todate = forms.DateField(label='Completed Date - End (inclusive)',  widget=forms.DateInput(format = '%Y-%m-%d'), input_formats=['%Y-%m-%d'], required=False) 
+    
+    def __init__(self, *args, **kwargs):
+        super(SearchCompletedForm, self).__init__(*args, **kwargs)
+        self.initial['fromdate'] = datetime.datetime.today() - datetime.timedelta(days=365)
+        self.initial['todate'] = datetime.datetime.today()
