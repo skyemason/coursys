@@ -748,7 +748,10 @@ def download_resume(request, post_slug, userid):
     if not is_ta_admin:
         return ForbiddenResponse(request, 'You cannot access this application')
     resume = application.resume
-    filename = application.person.name() + '-' + resume.name.rsplit('/')[-1]
+    #filename = application.person.name() + '-' + resume.name.rsplit('/')[-1]
+    original_filename = resume.name.rsplit('/')[-1]
+    filename = "%s_%s_%s_CV.%s" % (application.person.last_name, application.person.first_name , 
+                                                                              application.person.emplid, original_filename.rsplit('.')[-1])
     resp = StreamingHttpResponse(resume.chunks(), content_type=application.resume_mediatype)
     resp['Content-Disposition'] = 'attachment; filename="' + filename + '"'
     resp['Content-Length'] = resume.size
@@ -778,7 +781,10 @@ def download_transcript(request, post_slug, userid):
     if not is_ta_admin:
         return ForbiddenResponse(request, 'You cannot access this application')
     transcript = application.transcript
-    filename = application.person.name() + '-' + transcript.name.rsplit('/')[-1]
+    #filename = application.person.name() + '-' + transcript.name.rsplit('/')[-1]
+    original_filename = transcript.name.rsplit('/')[-1]
+    filename = "%s_%s_%s_transcript.%s" % (application.person.last_name, application.person.first_name , 
+                                                                              application.person.emplid, original_filename.rsplit('.')[-1])
     resp = StreamingHttpResponse(transcript.chunks(), content_type=application.transcript_mediatype)
     resp['Content-Disposition'] = 'attachment; filename="' + filename + '"'
     resp['Content-Length'] = transcript.size
@@ -816,12 +822,12 @@ def assign_tas(request, post_slug):
     if posting.unit not in request.units:
         ForbiddenResponse(request, 'You cannot access this page')
     
-    all_offerings = CourseOffering.objects.filter(semester=posting.semester, owner=posting.unit)
+    all_offerings = CourseOffering.objects.filter(semester=posting.semester, owner=posting.unit).select_related('course')
 
     # decorate offerings with currently-assigned TAs
-    all_assignments = TACourse.objects.filter(contract__posting=posting).select_related('course').select_related('contract__application__person')
+    all_assignments = TACourse.objects.filter(contract__posting=posting).select_related('course', 'contract__application__person', 'course__semester')
     for o in all_offerings:
-        o.assigned = [crs for crs in all_assignments if crs.course == o and crs.contract.bu() > 0]
+        o.assigned = [crs for crs in all_assignments if crs.course_id == o.id and crs.contract.bu() > 0]
     
     # ignore excluded courses
     excl = set(posting.excluded())
@@ -853,7 +859,7 @@ def download_assign_csv(request, post_slug):
     response['Content-Disposition'] = 'inline; filename="%s-assigsnment-table.csv"' % (posting.slug)
     writer = csv.writer(response)
     writer.writerow(['Offering', 'Combined to (from SIMS)', 'Instructor', 'Enrollment', 'Campus', 'Assigned', 'Applicants', 'Required BU (by capacity)',
-                    'Required BU (by enrol)', 'Assigned BU', 'Remaining'])
+                    'Required BU (by enrol)', 'Assigned Total BU', 'Remaining'])
     for o in offerings:
         enrollment_string = '%s/%s' % (o.enrl_tot, o.enrl_cap)
         if o.wait_tot:
@@ -901,8 +907,9 @@ def assign_bus(request, post_slug, course_slug):
     offering = get_object_or_404(CourseOffering, slug=course_slug)
     instructors = offering.instructors()
     course_prefs = CoursePreference.objects.filter(app__posting=posting, course=offering.course, app__late=False).select_related('app')
-    tacourses = TACourse.objects.filter(course=offering).select_related('contract__application__person')
-    all_applicants = TAApplication.objects.filter(posting=posting).select_related('person').select_related('supervisor')
+    tacourses = TACourse.objects.filter(course=offering).select_related('contract__application', 'contract__application__person')
+    tacourses = list(tacourses)
+    all_applicants = TAApplication.objects.filter(posting=posting).select_related('person', 'supervisor').prefetch_related('campuspreference_set')
     descrs = CourseDescription.objects.filter(unit=posting.unit)
     if not descrs.filter(labtut=True) or not descrs.filter(labtut=False):
         messages.error(request, "Must have at least one course description for TAs with and without labs/tutorials before assigning TAs.")
@@ -973,7 +980,7 @@ def assign_bus(request, post_slug, course_slug):
         
         # Determine Rank
         applicant.course_rank = course_preference.rank
-        personids.append(applicant.person.id)
+        personids.append(applicant.person_id)
 
         if applicant not in applicants:
             applicants.append(applicant)
@@ -1020,8 +1027,8 @@ def assign_bus(request, post_slug, course_slug):
         #applicant.campus_preference = campus_preference
 
         #Find BU assigned to this applicant through contract
-        course_assignments = tacourses.filter(contract__application=applicant)
-        if course_assignments.count() == 1:
+        course_assignments = [c for c in tacourses if c.contract.application_id == applicant.id]
+        if len(course_assignments) == 1:
             assignment_for_this_course = course_assignments[0]
             applicant.assigned_course = assignment_for_this_course
         else:
@@ -1053,8 +1060,8 @@ def assign_bus(request, post_slug, course_slug):
                     #create new TACourse if bu field is nonempty
                     if formset[i]['bu'].value() != '' and formset[i]['bu'].value() != '0':
                         #create new TAContract if there isn't one
-                        contracts = TAContract.objects.filter(application=applicants[i], posting=posting)
-                        if contracts.count() > 0: #count is 1
+                        contracts = list(TAContract.objects.filter(application=applicants[i], posting=posting))
+                        if len(contracts) > 0: #count is 1
                             # if we've added to the contract, we've invalidated it. 
                             contract = contracts[0]
                             contract.status = "NEW"
@@ -1407,7 +1414,9 @@ def view_form(request, post_slug, userid):
     posting = get_object_or_404(TAPosting, slug=post_slug, unit__in=request.units)
     contract = get_object_or_404(TAContract, posting=posting, application__person__userid=userid)
     response = HttpResponse(content_type="application/pdf")
-    response['Content-Disposition'] = 'inline; filename="%s-%s.pdf"' % (posting.slug, userid)
+    filename =  "%s_%s_%s_%s.pdf" % (contract.application.person.last_name, contract.application.person.first_name , 
+                                                                              contract.application.person.emplid, posting.slug)
+    response['Content-Disposition'] = 'inline; filename="%s"' % (filename)
     ta_form(contract, response)
     return response
 
@@ -1906,11 +1915,11 @@ def generate_csv_detail(request, post_slug):
     
     #First csv row: all the course names
     off = ['Rank', 'Name', 'SFUID', 'Email', 'Type', 'Year/Sem', 'Categ', 'Program (Reported)', 'Program (System)', 'Status', 'Supervisor (Reported)', 'Supervisor (System)', 'TA Experience', 'Unit', 'Start Sem', 'BU',
-           'Campus', 'Assigned Course(s)', 'Assigned BUs'] + [str(o.course) + ' ' + str(o.section) for o in offerings]
+           'Campus', 'Course preference comment', 'Assigned Course(s)', 'Assigned Total BUs'] + [str(o.course) + ' ' + str(o.section) for o in offerings]
     csvWriter.writerow(off)
     
     # next row: campuses
-    off = ['']*19 + [str(CAMPUSES_SHORTENED[o.campus]) for o in offerings]
+    off = ['']*20 + [str(CAMPUSES_SHORTENED[o.campus]) for o in offerings]
     csvWriter.writerow(off)
     
     # collect all grad program who apply ta posting
@@ -1980,7 +1989,7 @@ def generate_csv_detail(request, post_slug):
         supervisorlist = app.coursys_supervisor_display()
                 
         row = [rank, app.person.sortname(), app.person.emplid, app.person.email(), gptype, gpyear, app.category, app.get_current_program_display(), system_program, status, app.supervisor, supervisorlist, app.past_experience_display(), unit, startsem,
-               app.base_units, campuspref, assigned_courses, assigned_bus]
+               app.base_units, campuspref, app.preference_comment, assigned_courses, assigned_bus]
         
         for off in offerings:
             crs = off.course
@@ -2005,10 +2014,6 @@ def generate_csv_by_course(request, post_slug):
     # collect all course preferences in a sensible way
     prefs = CoursePreference.objects.filter(app__posting=posting).exclude(rank=0).order_by('app__person').select_related('app', 'course')
     
-    # collect those applicants without choose any course
-    prefsappid = CoursePreference.objects.filter(app__posting=posting).exclude(rank=0).order_by('app__person').select_related('app', 'course').values_list('app_id', flat=True)
-    noprefs = TAApplication.objects.filter(posting=posting).exclude(id__in=prefsappid)
-
     # generate CSV
     filename = str(posting.slug) + '_by_course.csv'
     response = HttpResponse(content_type='text/csv')
@@ -2024,8 +2029,10 @@ def generate_csv_by_course(request, post_slug):
             extra_questions.append(question)
 
     offering_rows = []
+    courseids = []
     for offering in offerings: 
         offering_rows.append([offering.course.subject + " " + offering.course.number + " " + offering.section])
+        courseids.append(offering.course_id)
         applications_for_this_offering = [pref.app for pref in prefs if 
             (pref.course.number == offering.course.number and pref.course.subject == offering.course.subject)]
         for app in applications_for_this_offering:
@@ -2047,6 +2054,10 @@ def generate_csv_by_course(request, post_slug):
             offering_rows.append(row)
         offering_rows.append([])
 
+    # collect those applicants without choose any course
+    prefsappid = CoursePreference.objects.filter(app__posting=posting, course_id__in=courseids).exclude(rank=0).order_by('app__person').select_related('app', 'course').values_list('app_id', flat=True)
+    noprefs = TAApplication.objects.filter(posting=posting).exclude(id__in=prefsappid)
+
     noprefs_rows = []
     for nopref in noprefs: 
         noprefs_rows.append(['', nopref.person.sortname(), nopref.person.emplid, nopref.person.email(), nopref.category, nopref.get_current_program_display(), nopref.base_units])
@@ -2056,7 +2067,7 @@ def generate_csv_by_course(request, post_slug):
         csvWriter.writerow(row)
     
     if len(noprefs) > 0:
-        csvWriter.writerow(['Below applicants have no course preference'])
+        csvWriter.writerow(['Below applicants have no course preference or selected course was canceled'])
         for row in noprefs_rows:
             csvWriter.writerow(row)
     return response

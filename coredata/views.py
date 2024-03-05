@@ -440,7 +440,12 @@ def admin_panel(request):
             environ.sort()
             return render(request, 'coredata/admin_panel_tab.html', {'environ': environ})
         elif request.GET['content'] == 'throw':
-            raise RuntimeError('This is a deliberately-thrown exception to test exception-handling in the system. It can be ignored.')
+            raise RuntimeError(
+                'This is a deliberately-thrown exception to test exception-handling in the system. It can be ignored.')
+        elif request.GET['content'] == 'failing_task':
+            from coredata.tasks import failing_task
+            failing_task.delay()
+            messages.success(request, 'Failing task started.')
         elif request.GET['content'] == 'slow':
             import time
             t = int(request.GET.get('t', '25'))
@@ -467,10 +472,9 @@ def admin_panel(request):
                 program_info_for_advisorvisits.apply_async()
                 messages.success(request, 'Advisor visit task started.')
             elif 'grad' in request.POST:
-                from coredata.tasks import import_grads
-                from grad.tasks import update_statuses_to_current
+                from grad.tasks import grad_daily_import, update_statuses_to_current
                 update_statuses_to_current.apply_async()
-                import_grads.apply_async()
+                grad_daily_import.apply_async()
                 messages.success(request, 'Grad update and import tasks started.')
 
     context = {
@@ -1385,6 +1389,7 @@ def browse_courses_info(request, course_slug):
         response = HttpResponse(content_type='application/json')
         data = outlines_data_json(offering)
         response.write(data)
+        response.slow_okay = True
         return response
 
     # the page itself (with most data assembled by AJAX requests to the above)

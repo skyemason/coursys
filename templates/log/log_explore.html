@@ -1,0 +1,83 @@
+{% extends "base-wide.html" %}
+{% load browser_display %}
+{% load static %}
+{% load compress %}
+
+{% block title %}Browse Log Entries: {{ log_type }}{% endblock %}
+{% block h1 %}Browse Log Entries: {{ log_type }}{% endblock %}
+
+{% block subbreadcrumbs %}<li>Browse Log Entries</li>{% endblock %}
+
+{% block headextra %}
+<script src="{% static 'jquery-ext/jquery.ba-bbq.min.js' %}"></script>
+<script src="{% static 'js/browse.js' %}"></script>
+{{ table_column_config|json_script:"table_column_config" }}
+{{ log_type|json_script:"log_type" }}
+<script nonce="{{ CSP_NONCE }}">
+$(document).ready(function() {
+  const my_url = '{% url "sysadmin:log_explore" %}';
+  const table_column_config = JSON.parse(document.getElementById('table_column_config').textContent);
+  const log_type = JSON.parse(document.getElementById('log_type').textContent);
+  restore_form();
+  table = $('#courses').dataTable( {
+    'jQueryUI': true,
+    'pagingType': 'full_numbers',
+    'pageLength' : 25,
+    'order': [[0,'desc']],
+    'processing': true,
+    'serverSide': true,
+    'searching': false,
+    'columns': table_column_config,
+    'ajax': {
+        'url': my_url,
+        'type': 'GET',
+        'cache': true,
+        'data': function (data) {
+            // append all of the form filters to the query data, so we can find the server-side
+            server_params().forEach(function(p) {
+                if (!(p.name in data)) {
+                    data[p.name] = [];
+                }
+                data[p.name].push(p.value)
+            });
+            data.tabledata = 'yes';
+            data.type = log_type;
+            return data;
+        }
+    }
+  } );
+  $('#filterform').change(refresh);
+} );
+</script>
+{% endblock %}
+
+{% block actions %}
+<div id="actions">
+    <h2>Actions</h2>
+    <ul>
+        {% for t in log_types %}
+        <li><a href="./?type={{ t }}">View {{ t }} logs</a></li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+<form action="" id="filterform">
+    {% for field in form.bound_fields %}
+    {{ field|browser_field }}
+    {% endfor %}
+</form>
+
+<div id="browser_container">
+<table id="courses" class="display">
+  <thead><tr>
+      {% for col in display_columns %}
+      <th scope="col">{{ col }}</th>
+      {% endfor %}
+  </tr></thead>
+  <tbody>
+  </tbody>
+</table>
+</div>
+{% endblock %}

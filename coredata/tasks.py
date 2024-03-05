@@ -1,7 +1,11 @@
 import os
-from typing import Optional
+from typing import Optional, Iterable, Type
 
 from django.conf import settings
+from django.db import models
+from haystack.exceptions import NotHandled
+from haystack.utils import loading
+from haystack.utils.app_loading import haystack_get_models, haystack_load_apps
 
 from coredata.queries import SIMSConn, SIMSProblem
 from courselib.search import haystack_update_index, haystack_rebuild_index
@@ -9,9 +13,9 @@ from courselib.svn import update_repository
 from django.core.management import call_command
 from courselib.celerytasks import task
 from coredata.models import Role, Unit, EnrolmentHistory
-from celery import Celery
+import celery
 
-app = Celery(broker=settings.CELERY_BROKER_URL, backend=settings.CELERY_RESULT_BACKEND)  # periodic tasks don't fire without app constructed
+app = celery.Celery(broker=settings.CELERY_BROKER_URL, backend=settings.CELERY_RESULT_BACKEND)  # periodic tasks don't fire without app constructed
 
 
 # the maximum beat test age we'd be happy with
@@ -31,6 +35,11 @@ def update_repository_task(*args, **kwargs):
 @task(queue='fast')
 def ping(): # used to check that celery is alive
     return True
+
+
+@task(queue='fast')
+def failing_task(): # used to check celery error handling
+    raise RuntimeError('This is a deliberately-thrown exception to test exception-handling from a Celery task. It can be ignored.')
 
 
 # a periodic job that has enough of an effect that we can see celerybeat working
@@ -126,17 +135,6 @@ def expiring_roles():
     Role.purge_expired()
 
 
-@task(queue='sims')
-def haystack_update():
-    haystack_update_index()
-
-
-# purge and rebuild the search index occasionally to get any orphaned records
-@task(queue='sims')
-def haystack_rebuild():
-    haystack_rebuild_index()
-
-
 @task()
 def expire_sessions_conveniently():
     """
@@ -167,20 +165,20 @@ logger = logging.getLogger(__name__)
 from django.conf import settings
 from coredata.models import CourseOffering, Member
 from dashboard.models import NewsItem
-from log.models import LogEntry
+from log.models import LogEntry, EventLogEntry
 from coredata import importer
-from celery import chain
-from grad import importer as grad_importer
-from grad.models import GradStudent, STATUS_ACTIVE, STATUS_APPLICANT
 import itertools, datetime, time
 import logging
 logger = logging.getLogger('coredata.importer')
 
+
 # adapted from https://docs.python.org/2/library/itertools.html
 # Used to chunk big lists into task-sized blocks.
-def _grouper(iterable, n):
-    "Collect data into fixed-length chunks or blocks"
-    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx
+def grouper(iterable, n):
+    """
+    Collect data into fixed-length chunks or blocks
+    grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx
+    """
     args = [iter(iterable)] * n
     groups = itertools.zip_longest(fillvalue=None, *args)
     return ((v for v in grp if v is not None) for grp in groups)
@@ -214,18 +212,12 @@ def import_task():
         daily_cleanup.si(),
         fix_unknown_emplids.si(),
         get_role_people.si(),
-        import_grads.si(),
-        get_update_grads_task(),
         import_offerings.si(continue_import=True),
         import_semester_info.si(),
         import_active_grad_gpas.si(),
-        #get_import_offerings_task(),
-        #import_combined_sections.si(),
-        #send_report.si()
-        haystack_update.si(),
     ]
 
-    chain(*tasks).apply_async()
+    celery.chain(*tasks).apply_async(serializer='pickle')
 
 
 @task(queue='sims')
@@ -233,38 +225,11 @@ def fix_unknown_emplids():
     logger.info('Fixing unknown emplids')
     importer.fix_emplid()
 
+
 @task(queue='sims')
 def get_role_people():
     logger.info('Importing people with roles')
     importer.get_role_people()
-
-@task(queue='sims')
-def import_grads():
-    logger.info('Importing grad data from SIMS')
-    grad_importer.import_grads(dry_run=False, verbosity=1)
-
-def get_update_grads_task():
-    """
-    Get grad students to import, and build tasks (in groups) to do the work.
-
-    Doesn't actually call the jobs: just returns a celery task to be called.
-    """
-    active = GradStudent.objects.filter(current_status__in=STATUS_ACTIVE).select_related('person')
-    applicants = GradStudent.objects.filter(current_status__in=STATUS_APPLICANT,
-                 updated_at__gt=datetime.datetime.now()-datetime.timedelta(days=7)).select_related('person')
-    grads = itertools.chain(active, applicants)
-    emplids = set(gs.person.emplid for gs in grads)
-    emplid_groups = _grouper(emplids, 20)
-
-    grad_import_chain = chain(*[import_grad_group.si(list(emplids)) for emplids in emplid_groups])
-    return grad_import_chain
-
-@task(queue='sims')
-def import_grad_group(emplids):
-    for emplid in emplids:
-        logger.debug('Importing grad %s' % (emplid,))
-        importer.get_person_grad(emplid)
-
 
 @task(queue='sims')
 def import_offerings(continue_import=False):
@@ -277,9 +242,9 @@ def import_offerings(continue_import=False):
     tasks = get_import_offerings_tasks()
 
     if continue_import:
-        #import_combined_sections.apply_async()
         tasks = tasks | import_combined_sections.si()
         tasks = tasks | import_joint.si()
+        tasks = tasks | haystack_update.si()
 
     logger.info('Starting offering subtasks')
     tasks.apply_async()
@@ -292,18 +257,17 @@ def get_import_offerings_tasks():
     Doesn't actually call the jobs: just returns celery tasks to be called.
     """
     #offerings = importer.import_offerings(extra_where="CT.SUBJECT='CMPT' and CT.CATALOG_NBR IN (' 383', ' 470')")
-    #offerings = importer.import_offerings()
     offerings = importer.import_offerings(cancel_missing=True)
     offerings = list(offerings)
     offerings.sort()
 
-    offering_groups = _grouper(offerings, 10)
+    offering_groups = grouper(offerings, 10)
     slug_groups = ([o.slug for o in offerings] for offerings in offering_groups)
 
     #tasks = [import_offering_group.si(slugs) for slugs in slug_groups]
     #return tasks
 
-    offering_import_chain = chain(*[import_offering_group.si(slugs) for slugs in slug_groups])
+    offering_import_chain = celery.chain(*[import_offering_group.si(slugs) for slugs in slug_groups])
     return offering_import_chain
 
 from requests.exceptions import Timeout
@@ -352,6 +316,8 @@ def daily_cleanup():
     SimilarityResult.cleanup_old()
     # deduplicate EnrolmentHistory
     EnrolmentHistory.deduplicate(start_date=datetime.date.today() - datetime.timedelta(days=30))
+    # purge old EventLogs
+    EventLogEntry.purge_old_logs()
     # clear orphaned tmp files
     cleanup_tmp()
 
@@ -380,3 +346,63 @@ def cleanup_tmp(path: str = '/tmp'):
 def import_active_grad_gpas():
     logger.info('Importing active grad GPAs')
     importer.import_active_grads_gpas()
+
+
+###################################################################################################
+# Search-related tasks
+
+
+@task(queue='sims')
+def haystack_update():
+    haystack_update_index()
+
+
+# purge and rebuild the search index occasionally to get any orphaned records
+@task(queue='sims')
+def haystack_rebuild():
+    haystack_rebuild_index()
+
+
+@task(queue='batch')
+def our_update_index(group_size: int = 2500, update_only: bool = True):
+    """
+    Roughly equivalent to the Haystack update_index management command, but handles the work in reasonably-sized
+    Celery tasks.
+    group_size: the number of objects to index in a task
+    update_only: don't necessarily index *everything*. Honour the SearchIndex's .update_filter() method if present.
+    """
+    haystack_connections = loading.ConnectionHandler(settings.HAYSTACK_CONNECTIONS)
+    backends = haystack_connections.connections_info.keys()
+    for label in haystack_load_apps():
+        for using in backends:
+            unified_index = haystack_connections[using].get_unified_index()
+            for model in haystack_get_models(label):
+                try:
+                    index = unified_index.get_index(model)
+                except NotHandled:
+                    continue
+
+                qs = index.build_queryset(using=using)
+
+                if update_only and hasattr(index, 'update_filter'):  # allow updating of only-likely-changing instances
+                    qs = index.update_filter(qs)
+
+                tasks = []
+                for group in grouper(qs.values('pk'), group_size):
+                    t = update_index_chunk.si(using=using, model=model, pks=[o['pk'] for o in group])
+                    tasks.append(t)
+                chain = celery.chain(*tasks)
+                chain.delay()
+
+
+@task(queue='batch', serializer='pickle')
+def update_index_chunk(using: str, model: Type[models.Model], pks: Iterable[int], commit: bool = True) -> None:
+    """
+    Index these instances (type model, primary keys in pks) with Haystack.
+    """
+    haystack_connections = loading.ConnectionHandler(settings.HAYSTACK_CONNECTIONS)
+    backend = haystack_connections[using].get_backend()
+    unified_index = haystack_connections[using].get_unified_index()
+    index = unified_index.get_index(model)
+    qs = model.objects.filter(pk__in=pks)
+    backend.update(index, qs, commit=commit)

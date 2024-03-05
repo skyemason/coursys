@@ -1125,8 +1125,8 @@ class CourseOffering(models.Model, ConditionalSaveMixin):
             num = o.number.replace('W', '')
             others = CourseOffering.objects \
                 .filter(subject=o.subject, number__in=[num, num+'W'], semester_id=o.semester_id) \
-                .exclude(pk=pk).exclude(component='CAN').exists()
-            if others:
+                .exclude(pk=pk).exclude(component='CAN').exclude(flags=CourseOffering.flags.combined).exists()
+            if others and not o.flags.combined:
                 return '%s-%s-%s' % (o.subject.lower(), num, o.section[0:2].lower())
             else:
                 return '%s-%s' % (o.subject.lower(), num)

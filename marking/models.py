@@ -674,6 +674,14 @@ def copyCourseSetup(course_copy_from, course_copy_to, redirect_pages):
         copy_setup_pages_task.delay(course_copy_from.slug, course_copy_to.slug)
 
 
+def to_decimal(x: str) -> decimal.Decimal:
+    d = decimal.Decimal(x)
+    if d.is_infinite() or d.is_nan():
+        # json.load allows NaN and Inf as numeric values: we don't accept them.
+        raise decimal.InvalidOperation()
+    return d
+
+
 from django.forms import ValidationError
 def activity_marks_from_JSON(activity, userid, data, save=False):
     """
@@ -761,7 +769,6 @@ def activity_marks_from_JSON(activity, userid, data, save=False):
         # using the "mark for all groups/users" form.
         the_mark = decimal.Decimal(0)
 
-
         if combine and old_am:
             late_percent = old_am.late_penalty
             mark_penalty = old_am.mark_adjustment
@@ -774,19 +781,19 @@ def activity_marks_from_JSON(activity, userid, data, save=False):
                 continue
             elif slug == 'the_mark':
                 try:
-                    the_mark = decimal.Decimal(str(markdata[slug]))
+                    the_mark = to_decimal(str(markdata[slug]))
                 except decimal.InvalidOperation:
                     pass
                 continue
             elif slug=="late_percent":
                 try:
-                    late_percent = decimal.Decimal(str(markdata[slug]))
+                    late_percent = to_decimal(str(markdata[slug]))
                 except decimal.InvalidOperation:
                     raise ValidationError('Value for "late_percent" must be numeric in record for "%s".' % (recordid))
                 continue
             elif slug=="mark_penalty":
                 try:
-                    mark_penalty = decimal.Decimal(str(markdata[slug]))
+                    mark_penalty = to_decimal(str(markdata[slug]))
                 except decimal.InvalidOperation:
                     raise ValidationError('Value for "mark_penalty" must be numeric in record for "%s".' % (recordid))
                 continue
@@ -830,7 +837,7 @@ def activity_marks_from_JSON(activity, userid, data, save=False):
                 raise ValidationError('Must give "mark" for "%s" in record for "%s".' % (comp.title, recordid))
             
             try:
-                value = decimal.Decimal(str(componentdata['mark']))
+                value = to_decimal(str(componentdata['mark']))
             except decimal.InvalidOperation:
                 raise ValidationError('Value for "mark" must be numeric for "%s" in record for "%s".' % (comp.title, recordid))
 
@@ -882,7 +889,7 @@ def activity_marks_from_JSON(activity, userid, data, save=False):
         am.overall_comment = overall_comment
 
         mark_total = the_mark or ((1-late_percent/decimal.Decimal(100)) *
-                                  (decimal.Decimal(str(mark_total)) - mark_penalty))
+                                  (to_decimal(str(mark_total)) - mark_penalty))
         
         # put the total mark and numeric grade objects in place
         am.mark = mark_total

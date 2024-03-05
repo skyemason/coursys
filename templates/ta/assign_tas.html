@@ -90,8 +90,7 @@
 <div id="actions">
 <h2 class="heading">Actions</h2>
 <ul>
-<li><a href="{% url "ta:generate_csv" post_slug=posting.slug %}">Applicant Spreadsheet</a></li>
-<li><a href="{% url "ta:generate_csv_detail" post_slug=posting.slug %}">Applicant Spreadsheet (New)</a></li>
+<li><a href="{% url "ta:generate_csv_detail" post_slug=posting.slug %}">Applicant Spreadsheet</a></li>
 <li><a href="{% url "ta:generate_csv_by_course" post_slug=posting.slug %}">Applicant Spreadsheet By Course</a></li>
 <li><a href="{% url "ta:download_assign" post_slug=posting.slug %}">Download CSV</a></li>
 </ul>
@@ -108,11 +107,11 @@
     <th scope="col">Instructor</th>
     <th scope="col">Enrol</th>
     <th scope="col">Campus</th>
-	<th scope="col">Assigned</th>
+	<th scope="col">Assigned Total</th>
 	<th scope="col">Applicants</th>
   <th scope="col">Required BU (by capacity)</th>
 	<th scope="col">Required BU (by enrol.)</th>
-    <th scope="col">Assigned BU</th>
+    <th scope="col">Total BU</th>
     <th scope="col">Remaining</th>
   </tr>
  </thead>

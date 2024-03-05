@@ -1,7 +1,6 @@
 from typing import Iterable
 
-from advisornotes.models import AdvisorNote, Announcement, NonStudent, ArtifactNote, Artifact, AdvisorVisit, AdvisorVisitCategory, \
-    ADVISING_CAMPUS_CHOICES
+from advisornotes.models import AdvisorNote, Announcement, NonStudent, ArtifactNote, Artifact, AdvisorVisit, AdvisorVisitCategory
 from coredata.models import Person, Unit
 from coredata.forms import OfferingField, CourseField
 from django import forms
@@ -13,6 +12,16 @@ import datetime
 
 TEXT_WIDTH = 70
 
+ADVISING_CAMPUS_FORM_CHOICES = (
+        ('BRNBY', 'Burnaby'),
+        ('SURRY', 'Surrey'),
+        ('OFFCA', 'Off-Campus')
+        )
+
+ADVISING_MODE_FORM_CHOICES = (
+        ('IP', 'In-Person'),
+        ('R', 'Remote'),
+    )
 
 class AdvisorNoteForm(MarkupContentMixin(field_name='text'), forms.ModelForm):
     text = MarkupContentField(label="Content", default_markup='plain', allow_math=False, restricted=False, with_wysiwyg=True)
@@ -202,16 +211,19 @@ class AdvisorVisitFormInitial(forms.ModelForm):
         self.fields['gender'].widget.attrs['readonly'] = True
         self.fields['citizenship'].widget.attrs['readonly'] = True
         # You have to manually reset the choices for the widget not to have the blank line.
-        self.fields['campus'].widget.choices = ADVISING_CAMPUS_CHOICES
+        self.fields['mode'].widget.choices = ADVISING_MODE_FORM_CHOICES
+        self.fields['campus'].widget.choices = ADVISING_CAMPUS_FORM_CHOICES
+        self.fields['campus'].label = "Location"
         if categories.count() > 0:
             self.fields['categories'].required = True
 
     class Meta:
         model = AdvisorVisit
-        fields = ['programs', "cgpa", "credits", "gender", "citizenship", "campus", "categories", "note",
+        fields = ['programs', "cgpa", "credits", "gender", "citizenship", "mode", "campus", "categories", "note",
                   "file_attachment", "email_student"]
         widgets = {
             'categories': forms.CheckboxSelectMultiple(),
+            'mode': forms.RadioSelect(),
             'campus': forms.RadioSelect()
         }
 
@@ -238,16 +250,19 @@ class AdvisorVisitFormSubsequent(forms.ModelForm):
         initial = kwargs.setdefault('initial', {})
         initial['categories'] = [c.pk for c in kwargs['instance'].categories.all()]
         # You have to manually reset the choices for the widget not to have the blank line.
-        self.fields['campus'].widget.choices = ADVISING_CAMPUS_CHOICES
+        self.fields['mode'].widget.choices = ADVISING_MODE_FORM_CHOICES
+        self.fields['campus'].widget.choices = ADVISING_CAMPUS_FORM_CHOICES
+        self.fields['campus'].label = "Location"
         if categories.count() > 0:
             self.fields['categories'].required = True
 
     class Meta:
         model = AdvisorVisit
-        fields = ["campus", "end_time", "categories"]
+        fields = ["mode", "campus", "end_time", "categories"]
         widgets = {
             'categories': forms.CheckboxSelectMultiple(),
             'end_time': forms.SplitDateTimeWidget(),
+            'mode': forms.RadioSelect(),
             'campus': forms.RadioSelect()
         }
 
