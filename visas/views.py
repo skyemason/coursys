@@ -96,7 +96,7 @@ class VisaDataJson(BaseDatatableView):
             if visa_qs:
                 max_score = max(r.score for r in visa_qs)
                 visa_pks = (r.pk for r in visa_qs if r.score > max_score/5)
-                qs = qs.filter(visa__in=visa_pks)
+                qs = qs.filter(id__in=visa_pks)
             else:
                 qs = qs.none()
         return qs
