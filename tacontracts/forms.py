@@ -12,6 +12,7 @@ from .models import HiringSemester, TACategory, TAContract, TACourse, CourseDesc
 
 class HiringSemesterForm(forms.ModelForm):
     comments = forms.CharField(required=False, widget=forms.Textarea(attrs={'rows':10, 'maxlength':625}))
+    contact = forms.EmailField(required=False)
 
     def __init__(self, request, *args, **kwargs):
         super(HiringSemesterForm, self).__init__(*args, **kwargs)
@@ -26,10 +27,12 @@ class HiringSemesterForm(forms.ModelForm):
         self.fields['unit'].empty_label = None
 
         self.initial['comments'] = getattr(self.instance, 'comments')
+        self.initial['contact'] = getattr(self.instance, 'contact')
 
     def clean(self):
         cleaned_data = super().clean()
         setattr(self.instance, 'comments', cleaned_data['comments'])
+        setattr(self.instance, 'contact', cleaned_data['contact'])
 
     class Meta:
         model = HiringSemester

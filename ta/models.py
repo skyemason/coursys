@@ -23,6 +23,7 @@ from django.template.loader import get_template
 from grad.models import GradStudent, Supervisor, STATUS_REAL_PROGRAM
 from . import bu_rules
 from django.utils import timezone
+from tacontracts.models import HiringSemester
 
 LAB_BONUS_DECIMAL = decimal.Decimal('0.17')
 LAB_BONUS = float(LAB_BONUS_DECIMAL)
@@ -201,16 +202,31 @@ class TAWorkloadReview(models.Model):
                 'userid':self.member.person.userid})    
 
     def send_notify(self):
-        subject = "Need action: TA %s Workload Review for %s (%s) needs action." % (self.member.person.name(), self.member.offering.name(), self.member.offering.semester)
-        content = "Need action: TA %s Workload Review for %s (%s) needs action.\nFor more information, see %s" \
+        subject = "Needs action: TA %s Workload Review for %s (%s) needs action." % (self.member.person.name(), self.member.offering.name(), self.member.offering.semester)
+        content = "Needs action: TA %s Workload Review for %s (%s) needs action.\nFor more information, see %s" \
             % (self.member.person.name(), self.member.offering.name(),  self.member.offering.semester, settings.BASE_ABS_URL + self.get_absolute_url())
-        
-        posting = TAPosting.objects.get(semester=self.member.offering.semester, unit=self.member.offering.owner)
 
-        to_email = posting.contact().email()
+        to_email = []
+        
+        #/ta
+        try:
+            posting = TAPosting.objects.get(semester=self.member.offering.semester, unit=self.member.offering.owner)
+        except:
+            posting = None
+        if posting: 
+            to_email.append(posting.contact().email())
+
+        #/tacontracts
+        try: 
+            hiring_semester = HiringSemester.objects.get(semester=self.member.offering.semester, unit=self.member.offering.owner)
+        except: 
+            hiring_semester = None
+        if hiring_semester:
+            to_email.append(hiring_semester.contact)
+
         from_email = settings.DEFAULT_FROM_EMAIL
         msg = EmailMultiAlternatives(subject=subject, body=content, from_email=from_email,
-                                     to=[to_email], headers={'X-coursys-topic': 'ta'})        
+                                     to=to_email, headers={'X-coursys-topic': 'ta'})        
         msg.send()
 
 CATEGORY_CHOICES = ( # order must match list in TAPosting.config['salary']
