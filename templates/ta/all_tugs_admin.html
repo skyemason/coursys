@@ -88,7 +88,7 @@ There are three TA-related processes that course instructors need to complete as
   	{% endif %}
   </td>
   <td>
-  	{% if data.tug and data.ta.offering.owner.label == 'CMPT' and is_wr_visible %}  	
+  	{% if data.tug and is_wr_visible %}  	
       {% if data.taworkload.reviewdate %}
         <a href="{% url "offering:view_ta_workload" course_slug=data.ta.offering.slug userid=data.ta.person.userid %}">Reviewed on: {{ data.taworkload.reviewdate|default:"Unknown" }} <br> 
           {% if data.taworkload.reviewhour %} <i class="fa fa-star">Need Action</i>{% endif %}</a>
