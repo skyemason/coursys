@@ -24,6 +24,7 @@ from grad.models import GradStudent, Supervisor, STATUS_REAL_PROGRAM
 from . import bu_rules
 from django.utils import timezone
 from dashboard.letters import ta_evaluation_form
+from tacontracts.models import HiringSemester
 
 LAB_BONUS_DECIMAL = decimal.Decimal('0.17')
 LAB_BONUS = float(LAB_BONUS_DECIMAL)
@@ -202,15 +203,32 @@ class TAWorkloadReview(models.Model):
                 'userid':self.member.person.userid})    
 
     def send_notify(self):
-        subject = "Need action: TA %s Workload Review for %s (%s) needs action." % (self.member.person.name(), self.member.offering.name(), self.member.offering.semester)
-        content = "Need action: TA %s Workload Review for %s (%s) needs action.\nFor more information, see %s" \
+        subject = "Needs action: TA %s Workload Review for %s (%s) needs action." % (self.member.person.name(), self.member.offering.name(), self.member.offering.semester)
+        content = "Needs action: TA %s Workload Review for %s (%s) needs action.\nFor more information, see %s" \
             % (self.member.person.name(), self.member.offering.name(),  self.member.offering.semester, settings.BASE_ABS_URL + self.get_absolute_url())
         
-        # for ta
-        posting = TAPosting.objects.filter(semester=self.member.offering.semester, unit=self.member.offering.owner).first()
+        to_email = []
+
+        #/ta
+        try:
+            posting = TAPosting.objects.filter(semester=self.member.offering.semester, unit=self.member.offering.owner).first()
+        except:
+            posting = None
+        if posting: 
+            to_email.append(posting.contact().email())
+
+        #/tacontracts
+        try: 
+            hiring_semester = HiringSemester.objects.filter(semester=self.member.offering.semester, unit=self.member.offering.owner).first()
+        except: 
+            hiring_semester = None
+        if hiring_semester:
+            to_email.append(hiring_semester.contact)
 
         if posting != None:
             to_email = posting.contact().email()
+
+        if to_email:
             from_email = settings.DEFAULT_FROM_EMAIL
             msg = EmailMultiAlternatives(subject=subject, body=content, from_email=from_email,
                                         to=[to_email], headers={'X-coursys-topic': 'ta'})        
