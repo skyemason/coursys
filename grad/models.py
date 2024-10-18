@@ -517,7 +517,7 @@ class GradStudent(models.Model, ConditionalSaveMixin):
     
     def _get_supervisors(self, senior_only=False):
         if senior_only:
-            types = ['SEN']
+            types = ['SEN', 'COS']
         else:
             types = ['SEN', 'COM', 'COS']
         supervisors = Supervisor.objects.filter(student=self, supervisor_type__in=types, removed=False)
