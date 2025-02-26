@@ -46,6 +46,9 @@
 {% if semester.next_semester %}
 <li><a href="{% url "tugs:all_tugs_admin" semester_name=semester.next_semester.name %}">Next Semester</a></li>
 {% endif %}
+{% if admin %}
+<li><a href="{% url "tugs:tugs_csv_download" semester_name=semester.name %}">TUGs CSV Download</a></li>
+{% endif %}
 </ul>
 </div>
 {% endblock %}
@@ -184,7 +187,7 @@ There are three TA-related processes that course instructors need to complete as
   </ul>         
   <ul class="fa-ul"> 
     Workload Review    
-    <li> - No automatic notifications</li>
+    <li> - Once instructors submit the Workload Review, the TA receive a pdf copy in their email. Admin only receive a notification if the number of hours required exceeds the number of hours assigned. </li>
   </ul>
   <ul class="fa-ul">
     TA Evaluation
@@ -195,7 +198,6 @@ There are three TA-related processes that course instructors need to complete as
     <li> - Day 14 of next term: TAs who have not completed their part of the TA Evaluation receive a second reminder (on {{ nextsem14day }})</li>
     <li> - Day 28 of next term: Admin receives pdf copies of all TA Evaluations for which the TAs have not completed their part on ({{ nextsem28day }})</li>
   </ul>
-  </div>
 {% endif %}
 </form>
 
