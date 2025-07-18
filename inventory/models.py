@@ -27,6 +27,20 @@ CATEGORY_CHOICES = {
     ('RESR', 'Research'),
     ('ADMN', 'Admin Support'),
     ('TECH', 'Tech Support'),
+    ('ELEC', 'Electronics'),
+    ('PPE', 'PPE')
+}
+
+CURRENT_CATEGORY_CHOICES = {
+    ('SWAG', 'Swag'),
+    ('BROC', 'Brochures'),
+    ('EVEN', 'Events'),
+    ('GEN', 'General'),
+    ('OFF', 'Office Supplies'),
+    ('TEAC', 'Teaching'),
+    ('RESR', 'Research'),
+    ('ADMN', 'Admin Support'),
+    ('TECH', 'Tech Support'),
     ('PPE', 'PPE')
 }
 
@@ -63,7 +77,7 @@ class Asset(models.Model):
                                                  help_text="The minimum quantity the vendor will let us order")
     last_order_date = models.DateField(null=True, blank=True)
     price = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
-    category = models.CharField(max_length=4, choices=CATEGORY_CHOICES, null=True, blank=True, default='GEN')
+    category = models.CharField(max_length=4, choices=CURRENT_CATEGORY_CHOICES, null=True, blank=True, default='GEN')
     location = models.CharField(max_length=150, null=True, blank=True)
     po = models.CharField("PR/PO No.", max_length=60, null=True, blank=True)
     account = models.CharField("Account No.", max_length=60, null=True, blank=True)
@@ -228,7 +242,7 @@ def assets_from_csv(request, data, save=False):
 
     # Create a category map, so we can map the given string to a proper category:
     category_lookup = {}
-    for cat in CATEGORY_CHOICES:
+    for cat in CURRENT_CATEGORY_CHOICES:
         category_lookup[cat[1].upper()] = cat[0]
     # The request should still have the units for which the user has the correct role
     line_counter = 0
