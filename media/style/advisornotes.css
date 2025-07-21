@@ -3,3 +3,14 @@
     margin-right: 5px;
     margin-left: 0px;
 }
+
+.form_section {
+    background-color: #eee;
+    padding-top: 10px;
+    padding-right: 15px;
+    padding-bottom: 10px;
+    padding-left: 15px;
+    border: 1px solid #bbb;
+    border-radius: 8px;
+    margin-bottom:15px;
+}
