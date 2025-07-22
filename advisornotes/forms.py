@@ -333,9 +333,9 @@ class StudentSurveyForm(ModelForm):
     comments = forms.CharField(required=False, label="Any other comments? (Optional)", widget=forms.Textarea(attrs={'rows': 10}))
 
     # extra info
-    other_questions_unanswered = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 2}), max_length=100)
-    other_advisor_review = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 2}), max_length=100)
-    other_reason = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 2}), max_length=100)
+    other_questions_unanswered = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 1}), max_length=100)
+    other_advisor_review = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 1}), max_length=100)
+    other_reason = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 1}), max_length=100)
 
     class Meta:
         model = AdvisorVisitSurvey
@@ -353,6 +353,7 @@ class StudentSurveyForm(ModelForm):
         for field in config_clean:
             setattr(self.instance, field, cleaned_data[field])
 
+        """
         questions_unanswered = cleaned_data.get('questions_unanswered')
         advisor_review = cleaned_data.get('advisor_review')
         reason = cleaned_data.get('reason')
@@ -367,5 +368,6 @@ class StudentSurveyForm(ModelForm):
             self.add_error('other_advisor_review', error_message)
         if reason == "OT" and other_reason == "":
             self.add_error('other_reason', error_message)
+        """
 
         

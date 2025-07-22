@@ -3,7 +3,6 @@
 {% load static %}
 
 {% block headextra %}
-<script type="text/javascript" src="{% static 'js/advisornotes_survey.js' %}"></script>
 <link rel="stylesheet" href="{% static 'style/advisornotes.css' %}" />
 {% endblock %}
 
@@ -15,16 +14,21 @@
 {% endblock %}
 
 {% block content %}
-<p>Thank you for attending an advising appointment with the Faculty of Applied Sciences. We’d love to hear how it went. Your responses help us improve our advising services.</p>
 
-<div class="form_container">
-    <form action="{% url "advising:student_survey" key=key %}" method="post" class="subtle">{% csrf_token %}
-        <div class="form_section">
-        {{ form|as_dl }}
-        </div>
-        <p><input type="submit" class="submit" value="Submit" /></p>
-    </form>
-</div>
+{% if survey.completed_at %}
+    <p>Your response has been recorded. Thank you for your feedback!</p>
+{% else %}
+    <p>Thank you for attending an advising appointment with the Faculty of Applied Sciences. We'd love to hear how it went. Your responses help us improve our advising services.</p>
+
+    <div class="form_container">
+        <form action="{% url "advising:student_survey" key=survey.key %}" method="post" class="subtle">{% csrf_token %}
+            <div class="form_section">
+            {{ form|as_dl }}
+            </div>
+            <p><input type="submit" class="submit" value="Submit" /></p>
+        </form>
+    </div>
+{% endif %}
 {% endblock %}
 
 

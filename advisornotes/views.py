@@ -392,10 +392,7 @@ def student_survey(request: HttpRequest, key: uuid) -> HttpResponse:
     survey = get_object_or_404(AdvisorVisitSurvey, key=key)
     visit = survey.visit
 
-    if survey.is_completed:
-        return ForbiddenResponse(request, 'Survey has already been submitted')
-
-    if request.method == "POST":
+    if request.method == "POST" and not survey.completed_at:
         form = StudentSurveyForm(request.POST, instance=survey)
         if form.is_valid():
             survey.completed_at = datetime.datetime.now()
@@ -405,10 +402,10 @@ def student_survey(request: HttpRequest, key: uuid) -> HttpResponse:
                      description="%s submitted advising survey" % str(request.user.username),
                      related_object=survey)
             l.save()      
-            return HttpResponseRedirect(reverse('dashboard:index'))
+            return HttpResponseRedirect(reverse('advising:student_survey', kwargs={'key': key}))
     else: 
-        form = StudentSurveyForm()
-    return render(request, 'advisornotes/student_survey.html', {'form': form, 'visit': visit, 'key': survey.key})
+        form = StudentSurveyForm(instance=survey)
+    return render(request, 'advisornotes/student_survey.html', {'form': form, 'visit': visit, 'survey': survey})
 
 @requires_role('ADVM')
 def view_all_surveys(request: HttpRequest) -> HttpResponse:
