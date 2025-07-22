@@ -18,7 +18,7 @@
 <p>Thank you for attending an advising appointment with the Faculty of Applied Sciences. We’d love to hear how it went. Your responses help us improve our advising services.</p>
 
 <div class="form_container">
-    <form action="{% url "advising:student_survey" visit_slug=visit.slug %}" method="post" class="subtle">{% csrf_token %}
+    <form action="{% url "advising:student_survey" key=key %}" method="post" class="subtle">{% csrf_token %}
         <div class="form_section">
         {{ form|as_dl }}
         </div>

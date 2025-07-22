@@ -31,6 +31,8 @@ from . import rest
 from timeit import itertools
 import csv
 import urllib.parse
+import uuid
+from django.db.models import Q
 
 
 
@@ -270,39 +272,53 @@ def _email_student_note(note):
     mail.attach_alternative(content_html, 'text/html')
     mail.send()
 
-def _initialize_student_survey(request: HttpRequest, visit: AdvisorVisit) -> HttpResponse:
+def _initialize_student_survey(request: HttpRequest, visit: AdvisorVisit, test: bool=False) -> HttpResponse:
     """
     Create new post-advising survey and notify student.
     """
-    # check if already created
-    if AdvisorVisitSurvey.objects.filter(visit=visit).exists():
-        return
-    # not for non-students at this time
-    if visit.student is None:
-        return
-    # ensure end time time is set
-    if visit.end_time is None:
-        return
-    print("HEWRE")
 
-    survey = AdvisorVisitSurvey.objects.create(visit=visit)
-    #LOG EVENT#
-    l = LogEntry(userid=request.user.username,
-            description=("Advisor visit survey created for %s") % (visit.get_userid()),
-            related_object=visit)
-    l.save()
+    user = get_object_or_404(Person, userid=request.user.username)
+
+    if test:
+        survey = AdvisorVisitSurvey.objects.create(created_by=user)
+        # LOG EVENT
+        l = LogEntry(userid=request.user.username,
+        description=("Test advisor visit survey created for %s") % (request.user.username),
+        related_object=survey)
+        l.save()
+    else:
+        if not visit:
+            return
+        # check if already created
+        if AdvisorVisitSurvey.objects.filter(visit=visit).exists():
+            return
+        # not for non-students at this time
+        if visit.student is None:
+            return
+        # ensure end time time is set
+        if visit.end_time is None:
+            return
+        survey = AdvisorVisitSurvey.objects.create(visit=visit, created_by=user)
+        # LOG EVENT
+        l = LogEntry(userid=request.user.username,
+        description=("Advisor visit survey created for %s") % (visit.get_userid()),
+        related_object=survey)
+        l.save()
 
     html_template = get_template('advisornotes/emails/survey.html')
     text_template = get_template('advisornotes/emails/survey.txt')
 
-    # SEND EMAIL
+    # SEND EMAIL #
     subject = "FAS Academic Advising: Post-Appointment Feedback Survey"
     from_email = settings.DEFAULT_FROM_EMAIL
-    email = visit.student.email()
+
+    if test:
+        email = user.email()
+    else: 
+        email = visit.student.email()
     cc = None
 
     url = settings.BASE_ABS_URL + survey.get_absolute_url()
-    print(url)
     context = {'url': url}
 
     text_content = text_template.render(context)
@@ -311,16 +327,15 @@ def _initialize_student_survey(request: HttpRequest, visit: AdvisorVisit) -> Htt
                                   cc=[cc])
     mail.attach_alternative(html_content, 'text/html')
     mail.send()
-    visit.mark_survey_sent()
+    if not test:
+        visit.mark_survey_sent()
 
-@login_required
-def student_survey(request: HttpRequest, visit_slug: str) -> HttpResponse:
+def student_survey(request: HttpRequest, key: uuid) -> HttpResponse:
     """
     View for student to fill out post-advising survey
     """
-    student = get_object_or_404(Person, userid=request.user.username)
-    visit = get_object_or_404(AdvisorVisit, student=student, slug=visit_slug, hidden=False)
-    survey = get_object_or_404(AdvisorVisitSurvey, visit=visit)
+    survey = get_object_or_404(AdvisorVisitSurvey, key=key)
+    visit = survey.visit
 
     if survey.is_completed:
         return ForbiddenResponse(request, 'Survey has already been submitted')
@@ -332,13 +347,46 @@ def student_survey(request: HttpRequest, visit_slug: str) -> HttpResponse:
             survey.save()
             messages.add_message(request, messages.SUCCESS, 'Survey submitted.')
             l = LogEntry(userid=request.user.username,
-                     description="%s submitted advising survey" % str(visit.get_userid()),
-                     related_object=visit)
+                     description="%s submitted advising survey" % str(request.user.username),
+                     related_object=survey)
             l.save()      
             return HttpResponseRedirect(reverse('dashboard:index'))
     else: 
         form = StudentSurveyForm()
-    return render(request, 'advisornotes/student_survey.html', {'form': form, 'visit': visit})
+    return render(request, 'advisornotes/student_survey.html', {'form': form, 'visit': visit, 'key': survey.key})
+
+@requires_role('ADVM')
+def view_all_surveys(request: HttpRequest) -> HttpResponse:
+    """
+    View for Advisor Managers to review survey results
+    """
+    user = get_object_or_404(Person, userid=request.user.username)
+    surveys = AdvisorVisitSurvey.objects.filter(Q(visit__unit__in=request.units) | Q(created_by=user)).exclude(completed_at__isnull=True).order_by("-created_at")[:5000]
+    incomplete_surveys = AdvisorVisitSurvey.objects.filter(completed_at__isnull=True).count()
+    return render(request, 'advisornotes/view_all_surveys.html', {'surveys': surveys, 'incomplete_surveys': incomplete_surveys})
+
+@requires_role('ADVM')
+def view_survey(request: HttpRequest, key: uuid) -> HttpResponse:
+    survey = get_object_or_404(AdvisorVisitSurvey, key=key)
+    return render(request, 'advisornotes/view_survey.html', {'survey': survey})
+
+@requires_role('ADVM')
+def delete_survey(request: HttpRequest, key: uuid) -> HttpResponse:
+    """ 
+    Only possible to delete test surveys at this time (surveys without AdvisorVisits)
+    """
+    survey = get_object_or_404(AdvisorVisitSurvey, key=key, visit__isnull=True)
+    survey.delete()
+    messages.add_message(request, messages.SUCCESS, 'Survey deleted.')
+    return HttpResponseRedirect(reverse('advisornotes:view_all_surveys'))
+
+@requires_role('ADVM')
+def send_test_survey(request: HttpRequest) -> HttpResponse:
+    _initialize_student_survey(request, None, True)
+    user = get_object_or_404(Person, userid=request.user.username)
+    email = user.email()
+    messages.add_message(request, messages.SUCCESS, 'Survey sent to %s' % str(email))
+    return HttpResponseRedirect(reverse('advisornotes:view_all_surveys'))
 
 @requires_role(['ADVS', 'ADVM'])
 @transaction.atomic
@@ -851,10 +899,12 @@ def view_visit(request, visit_slug):
     # Managers can edit all visits in their unit, and advisors can edit their own visits.
     is_manager = Role.objects.filter(person=user, role='ADVM', unit=visit.unit).exists()
 
+    url = settings.BASE_ABS_URL + survey.get_absolute_url()
+
     survey_expiry = None
     if survey and not survey.is_completed:
             survey_expiry = (survey.created_at + datetime.timedelta(days=30)).strftime('%m/%d/%Y')
-    return render(request, 'advisornotes/view_visit.html', {'userid': visit.get_userid(), 'visit': visit, 'survey': survey, 'survey_expiry': survey_expiry, 'is_manager': is_manager})
+    return render(request, 'advisornotes/view_visit.html', {'userid': visit.get_userid(), 'visit': visit, 'survey': survey, 'survey_expiry': survey_expiry, 'is_manager': is_manager, 'url': url})
 
 
 @requires_role('ADVM')
@@ -937,7 +987,7 @@ def end_visit_admin(request, visit_slug):
                              (visit.get_userid(), visit.advisor.userid, visit.created_at),
                  related_object=visit)
     l.save()
-    _create_student_survey(request, visit)
+    _initialize_student_survey(request, visit)
     return HttpResponseRedirect(reverse('advising:all_visits'))
 
 

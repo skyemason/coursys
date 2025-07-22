@@ -9,6 +9,7 @@ from django.urls import reverse
 from datetime import date
 import datetime
 import os.path
+import uuid
 
 
 # Used to determine if you have any non-end-dated visit, but only of the newer type, with end-dates added by a view.
@@ -366,6 +367,9 @@ class AdvisorVisit(models.Model):
 
     slug = AutoSlugField(populate_from='autoslug', null=False, editable=False, unique=True)
 
+    def get_absolute_url(self):
+        return reverse('advising:view_visit', kwargs={'visit_slug': self.slug})
+
     def save(self, *args, **kwargs):
         # ensure we always have either the student, nonstudent, or program unit.
         assert self.student or self.nonstudent or self.program
@@ -488,8 +492,10 @@ class AdvisorVisitSurvey(models.Model):
     """
     Record a students thoughts on an AdvisorVisit
     """
-    visit = models.OneToOneField(AdvisorVisit, on_delete=models.CASCADE)
+    key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    visit = models.OneToOneField(AdvisorVisit, on_delete=models.PROTECT, null=True, blank=True)
     created_at = models.DateTimeField(default=datetime.datetime.now)
+    created_by = models.ForeignKey(Person, on_delete=models.PROTECT)
     completed_at = models.DateTimeField(null=True, blank=True)
 
     time = models.CharField(null=True, blank=True, choices=SURVEY_TIME_CHOICES, max_length=2)
@@ -507,10 +513,10 @@ class AdvisorVisitSurvey(models.Model):
     other_reason = config_property('other_reason', '')
 
     def __str__(self):
-        return str(self.visit.get_userid()) + "@" + str(self.created_at) + ("-filled" if self.complete else "-unfilled")
+        return (str(self.visit.get_userid()) if self.visit else "test") + "@" + str(self.created_at) + ("-filled" if self.completed_at is not None else "-unfilled")
 
     def get_absolute_url(self):
-        return reverse('advising:student_survey', kwargs={'visit_slug': self.visit.slug})
+        return reverse('advising:student_survey', kwargs={'key': self.key})
     
     @property
     def is_completed(self):
