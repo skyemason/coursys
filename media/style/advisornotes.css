@@ -12,7 +12,7 @@
     padding-left: 15px;
     border: 1px solid #bbb;
     border-radius: 8px;
-    margin-bottom:15px;
+    margin:3px;
 }
 
 .notification {
@@ -25,3 +25,8 @@
     border-radius: 8px;
   }
   
+  .form_section textarea {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+  }
