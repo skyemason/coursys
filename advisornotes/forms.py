@@ -327,9 +327,9 @@ class StudentSurveyForm(ModelForm):
     overall = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=SURVEY_OVERALL_CHOICES, label="How would you rate your appointment overall?")
     reason = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=SURVEY_REASON_CHOICES, label="What was the main reason for your advising appointment?")
     questions_answered = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=SURVEY_QUESTIONS_ANSWERED_CHOICES, label="Did the advisor answer your question(s)?")
-    support = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=SURVEY_SUPPORT_CHOICES, label="I feel supported during my advising appointment?")
+    support = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=SURVEY_SUPPORT_CHOICES, label="I felt supported during my advising appointment?")
     advisor_review = forms.MultipleChoiceField(required=True, widget=forms.CheckboxSelectMultiple(), choices=SURVEY_ADVISOR_REVIEW_CHOICES, label="The advisor… (select all that apply)")
-    questions_unanswered = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=SURVEY_QUESTIONS_UNANSWERED_CHOICES, label="If your question wasn’t fully answered during your appointment, what was the main reason? (Select the option that best describes your experience) ")
+    questions_unanswered = forms.ChoiceField(required=False, widget=forms.RadioSelect(), choices=SURVEY_QUESTIONS_UNANSWERED_CHOICES, label="If your question wasn't fully answered during your appointment, what was the main reason? (Select the option that best describes your experience) ")
     comments = forms.CharField(required=False, label="Any other comments? (Optional)", widget=forms.Textarea(attrs={'rows': 10}))
 
     # extra info

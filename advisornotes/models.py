@@ -10,7 +10,7 @@ from datetime import date
 import datetime
 import os.path
 import uuid
-
+from django.db.models import Q
 
 # Used to determine if you have any non-end-dated visit, but only of the newer type, with end-dates added by a view.
 # All the older visits will not have an end-date.
@@ -549,10 +549,10 @@ class AdvisorVisitSurvey(models.Model):
     @classmethod
     def delete_expired(cls, dry_run=False):
         """
-        Remove any surveys that were not filled after 30 days.
+        Remove any surveys that were not filled or are tests after 30 days.
         """
         expiry_date = datetime.datetime.today() - datetime.timedelta(days=30)
-        expired_surveys = AdvisorVisitSurvey.objects.filter(end_date__lte=expiry_date, complete=False).order_by('created_at')
+        expired_surveys = AdvisorVisitSurvey.objects.filter(Q(complete=False) | Q(visit__isnull=True), end_date__lte=expiry_date).order_by('created_at')
 
         for survey in expired_surveys:
             if not dry_run:

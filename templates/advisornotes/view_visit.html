@@ -39,7 +39,7 @@
     </table>
 {% endif %}
 
-{% if is_manager %}
+{% if show_survey_info %}
     <div class="form_section">
     {% if survey and survey.is_completed %}
     <a class="btn" href="{% url "advising:view_survey" key=survey.key %}">View Survey Results</a>

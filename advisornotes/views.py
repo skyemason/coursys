@@ -34,7 +34,8 @@ import urllib.parse
 import uuid
 from django.db.models import Q
 
-
+# units participating in post-advising surveys
+SURVEY_UNITS = ['APSC', 'CMPT', 'ENSC', 'MSE', 'SEE']
 
 def _redirect_to_notes(student):
     """
@@ -67,7 +68,9 @@ def advising(request):
     artifact_form = ArtifactSearchForm(prefix="text")
     advisor_admin = Role.objects_fresh.filter(role='ADVM', person__userid=request.user.username).exists()
     entries = Announcement.objects.filter(created_at__gte=datetime.datetime.now()-datetime.timedelta(days=14), hidden=False)[:3]
-    context = {'form': form, 'note_form': note_form, 'artifact_form': artifact_form, 'advisor_admin': advisor_admin, 'entries': entries}
+    user = get_object_or_404(Person, userid=request.user.username)
+    show_survey_info = Role.objects.filter(person=user, role='ADVM', unit__label__in=SURVEY_UNITS).exists()
+    context = {'form': form, 'note_form': note_form, 'artifact_form': artifact_form, 'advisor_admin': advisor_admin, 'entries': entries, 'show_survey_info': show_survey_info}
     return render(request, 'advisornotes/student_search.html', context)
 
 
@@ -294,21 +297,32 @@ def _initialize_student_survey(request: HttpRequest, visit: AdvisorVisit) -> Htt
     """
     Create new post-advising survey and notify student.
     """
+    # FOR FIRST ITERATION, DO NOT SEND TO STUDENTS
+    #return 
 
-    user = get_object_or_404(Person, userid=request.user.username)
-
+    # no visit no survey
     if not visit:
         return
-    # check if already created
+    # don't bother with hidden visits
+    if visit.hidden:
+        return
+    # only for visits in participating units
+    if visit.unit.label not in SURVEY_UNITS:
+        return
+    # check if survey has already been created
     if AdvisorVisitSurvey.objects.filter(visit=visit).exists():
         return
-    # ensure end time time is set
+    # ensure end time is set
     if visit.end_time is None:
         return
-    # double check that visit hasn't already been marked sent
+    # double check that visit hasn't already been marked as sent
     if visit.survey_sent:
         return
+    # check that the visit occured within the last two days
+    if visit.created_at < (datetime.datetime.now() - datetime.timedelta(days=2)):
+        return
     
+    user = get_object_or_404(Person, userid=request.user.username)
     survey = AdvisorVisitSurvey.objects.create(visit=visit, created_by=user)
     # LOG EVENT
     l = LogEntry(userid=request.user.username,
@@ -354,6 +368,7 @@ def send_test_survey(request: HttpRequest) -> HttpResponse:
     messages.add_message(request, messages.SUCCESS, 'Survey sent to %s' % str(email))
     return HttpResponseRedirect(reverse('advisornotes:view_all_surveys'))
 
+# TEST STUFF FOR TESTERS, TO BE REMOVED
 def _test_stuff(request, survey, email):
     # TEST STUFF
     subject = "FAS Academic Advising: Post-Appointment Feedback Survey"
@@ -402,7 +417,7 @@ def view_all_surveys(request: HttpRequest) -> HttpResponse:
     """
     user = get_object_or_404(Person, userid=request.user.username)
     surveys = AdvisorVisitSurvey.objects.filter(Q(visit__unit__in=request.units) | Q(created_by=user)).exclude(completed_at__isnull=True).order_by("-created_at")[:5000]
-    incomplete_surveys = AdvisorVisitSurvey.objects.filter(completed_at__isnull=True).count()
+    incomplete_surveys = AdvisorVisitSurvey.objects.filter(completed_at__isnull=True, visit__unit__in=request.units).count()
     return render(request, 'advisornotes/view_all_surveys.html', {'surveys': surveys, 'incomplete_surveys': incomplete_surveys})
 
 @requires_role('ADVM')
@@ -924,19 +939,19 @@ def view_visit(request, visit_slug):
     visit = AdvisorVisit.objects.visible(request.units).get(slug=visit_slug)
     try:
         survey = AdvisorVisitSurvey.objects.get(visit=visit)
+        url = settings.BASE_ABS_URL + survey.get_absolute_url()
     except:
         survey = None
+        url = None
     
     user = get_object_or_404(Person, userid=request.user.username)
     # Managers can edit all visits in their unit, and advisors can edit their own visits.
-    is_manager = Role.objects.filter(person=user, role='ADVM', unit=visit.unit).exists()
-
-    url = settings.BASE_ABS_URL + survey.get_absolute_url()
+    show_survey_info = Role.objects.filter(person=user, role='ADVM', unit__label__in=SURVEY_UNITS).exists()
 
     survey_expiry = None
     if survey and not survey.is_completed:
             survey_expiry = (survey.created_at + datetime.timedelta(days=30)).strftime('%m/%d/%Y')
-    return render(request, 'advisornotes/view_visit.html', {'userid': visit.get_userid(), 'visit': visit, 'survey': survey, 'survey_expiry': survey_expiry, 'is_manager': is_manager, 'url': url})
+    return render(request, 'advisornotes/view_visit.html', {'userid': visit.get_userid(), 'visit': visit, 'survey': survey, 'survey_expiry': survey_expiry, 'show_survey_info': show_survey_info, 'url': url})
 
 
 @requires_role('ADVM')
