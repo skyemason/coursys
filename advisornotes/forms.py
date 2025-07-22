@@ -330,12 +330,12 @@ class StudentSurveyForm(ModelForm):
     support = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=SURVEY_SUPPORT_CHOICES, label="I feel supported during my advising appointment?")
     advisor_review = forms.MultipleChoiceField(required=True, widget=forms.CheckboxSelectMultiple(), choices=SURVEY_ADVISOR_REVIEW_CHOICES, label="The advisor… (select all that apply)")
     questions_unanswered = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=SURVEY_QUESTIONS_UNANSWERED_CHOICES, label="If your question wasn’t fully answered during your appointment, what was the main reason? (Select the option that best describes your experience) ")
-    comments = forms.CharField(required=False, label="Any other comments? (Optional)", widget=forms.Textarea(attrs={'cols': 100, 'rows': 10}))
+    comments = forms.CharField(required=False, label="Any other comments? (Optional)", widget=forms.Textarea(attrs={'rows': 10}))
 
     # extra info
-    other_questions_unanswered = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'cols': 100, 'rows': 2}), max_length=100)
-    other_advisor_review = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'cols': 100, 'rows': 2}), max_length=100)
-    other_reason = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'cols': 100, 'rows': 2}), max_length=100)
+    other_questions_unanswered = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 2}), max_length=100)
+    other_advisor_review = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 2}), max_length=100)
+    other_reason = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 2}), max_length=100)
 
     class Meta:
         model = AdvisorVisitSurvey
