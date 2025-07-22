@@ -53,7 +53,9 @@
     Survey was sent, but never completed.
 {% endif %}
 </div>
+{% if survey.visit %}
 <div class="actionlist">
     <a class="btn" href="{% url "advising:student_notes" userid=survey.visit.get_userid %}">View Student Notes</a>
 </div>
+{% endif %}
 {% endblock %}

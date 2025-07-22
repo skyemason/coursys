@@ -272,50 +272,67 @@ def _email_student_note(note):
     mail.attach_alternative(content_html, 'text/html')
     mail.send()
 
-def _initialize_student_survey(request: HttpRequest, visit: AdvisorVisit, test: bool=False) -> HttpResponse:
+def _initialize_test_survey(request: HttpRequest) -> HttpResponse:
+    """
+    Create new test survey and notify manager.
+    """
+    user = get_object_or_404(Person, userid=request.user.username)
+    survey = AdvisorVisitSurvey.objects.create(created_by=user)
+    # LOG EVENT
+    l = LogEntry(userid=request.user.username,
+        description=("Test advisor visit survey created for %s") % (request.user.username),
+        related_object=survey)
+    l.save()
+    email = user.email()
+    _send_survey_email(survey, email)
+    # TESTING STUFF
+    _test_stuff(request, survey, email) 
+
+    return survey
+
+def _initialize_student_survey(request: HttpRequest, visit: AdvisorVisit) -> HttpResponse:
     """
     Create new post-advising survey and notify student.
     """
 
     user = get_object_or_404(Person, userid=request.user.username)
 
-    if test:
-        survey = AdvisorVisitSurvey.objects.create(created_by=user)
-        # LOG EVENT
-        l = LogEntry(userid=request.user.username,
-        description=("Test advisor visit survey created for %s") % (request.user.username),
-        related_object=survey)
-        l.save()
-    else:
-        if not visit:
-            return
-        # check if already created
-        if AdvisorVisitSurvey.objects.filter(visit=visit).exists():
-            return
-        # not for non-students at this time
-        if visit.student is None:
-            return
-        # ensure end time time is set
-        if visit.end_time is None:
-            return
-        survey = AdvisorVisitSurvey.objects.create(visit=visit, created_by=user)
-        # LOG EVENT
-        l = LogEntry(userid=request.user.username,
-        description=("Advisor visit survey created for %s") % (visit.get_userid()),
-        related_object=survey)
-        l.save()
+    if not visit:
+        return
+    # check if already created
+    if AdvisorVisitSurvey.objects.filter(visit=visit).exists():
+        return
+    # ensure end time time is set
+    if visit.end_time is None:
+        return
+    # double check that visit hasn't already been marked sent
+    if visit.survey_sent:
+        return
+    
+    survey = AdvisorVisitSurvey.objects.create(visit=visit, created_by=user)
+    # LOG EVENT
+    l = LogEntry(userid=request.user.username,
+    description=("Advisor visit survey created for %s") % (visit.get_userid()),
+    related_object=survey)
+    l.save()
 
+    email = visit.student.email()
+    _send_survey_email(survey, email)
+
+    # TESTING STUFF
+    _test_stuff(request, survey, email) 
+    
+    visit.mark_survey_sent()
+
+    return survey
+
+def _send_survey_email(survey: AdvisorVisitSurvey, email) -> HttpResponse:
     html_template = get_template('advisornotes/emails/survey.html')
     text_template = get_template('advisornotes/emails/survey.txt')
 
     # SEND EMAIL #
     subject = "FAS Academic Advising: Post-Appointment Feedback Survey"
     from_email = settings.DEFAULT_FROM_EMAIL
-
-    if test:
-        email = user.email()
-    else: 
-        email = visit.student.email()
     cc = None
 
     url = settings.BASE_ABS_URL + survey.get_absolute_url()
@@ -323,12 +340,35 @@ def _initialize_student_survey(request: HttpRequest, visit: AdvisorVisit, test: 
 
     text_content = text_template.render(context)
     html_content = html_template.render(context)
-    mail = EmailMultiAlternatives(subject=subject, body=text_content, from_email=from_email, to=[email],
-                                  cc=[cc])
+
+    mail = EmailMultiAlternatives(subject=subject, body=text_content, from_email=from_email, to=[email], cc=[cc])
     mail.attach_alternative(html_content, 'text/html')
     mail.send()
-    if not test:
-        visit.mark_survey_sent()
+    return
+
+@requires_role('ADVM')
+def send_test_survey(request: HttpRequest) -> HttpResponse:
+    _initialize_test_survey(request)
+    user = get_object_or_404(Person, userid=request.user.username)
+    email = user.email()
+    messages.add_message(request, messages.SUCCESS, 'Survey sent to %s' % str(email))
+    return HttpResponseRedirect(reverse('advisornotes:view_all_surveys'))
+
+def _test_stuff(request, survey, email):
+    # TEST STUFF
+    subject = "FAS Academic Advising: Post-Appointment Feedback Survey"
+    from_email = settings.DEFAULT_FROM_EMAIL
+    url = settings.BASE_ABS_URL + survey.get_absolute_url()
+    context = {'url': url}
+    text_template = get_template('advisornotes/emails/survey.txt')
+    text_content = text_template.render(context)
+    messages.add_message(request, messages.SUCCESS, 'FOR TESTING:')
+    messages.add_message(request, messages.SUCCESS, 'URL: %s' % (settings.BASE_ABS_URL + survey.get_absolute_url()))
+    messages.add_message(request, messages.SUCCESS, 'SUBJECT: %s' % (subject))
+    messages.add_message(request, messages.SUCCESS, 'TO EMAIL: %s' % (email))
+    messages.add_message(request, messages.SUCCESS, 'FROM EMAIL: %s' % (from_email))
+    messages.add_message(request, messages.SUCCESS, 'CONTENT: %s' % (text_content))
+    return
 
 def student_survey(request: HttpRequest, key: uuid) -> HttpResponse:
     """
@@ -378,14 +418,6 @@ def delete_survey(request: HttpRequest, key: uuid) -> HttpResponse:
     survey = get_object_or_404(AdvisorVisitSurvey, key=key, visit__isnull=True)
     survey.delete()
     messages.add_message(request, messages.SUCCESS, 'Survey deleted.')
-    return HttpResponseRedirect(reverse('advisornotes:view_all_surveys'))
-
-@requires_role('ADVM')
-def send_test_survey(request: HttpRequest) -> HttpResponse:
-    _initialize_student_survey(request, None, True)
-    user = get_object_or_404(Person, userid=request.user.username)
-    email = user.email()
-    messages.add_message(request, messages.SUCCESS, 'Survey sent to %s' % str(email))
     return HttpResponseRedirect(reverse('advisornotes:view_all_surveys'))
 
 @requires_role(['ADVS', 'ADVM'])
