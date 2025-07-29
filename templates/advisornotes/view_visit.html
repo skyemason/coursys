@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block headextra %}
-<link rel="stylesheet" href="{% static 'style/ra.css' %}" />
+<link rel="stylesheet" href="{% static 'style/advisornotes.css' %}" />
 {% endblock %}
 
 
@@ -38,11 +38,11 @@
 {% if visit.citizenship %}<tr><th>Citizenship</th><td>{{ visit.citizenship }}</td></tr>{% endif %}
     </table>
 {% endif %}
-
 {% if show_survey_info %}
-    <div class="form_section">
     {% if survey and survey.is_completed %}
-    <a class="btn" href="{% url "advising:view_survey" key=survey.key %}">View Survey Results</a>
+    <div class="actionlist">
+        <a class="btn" href="{% url "advising:view_survey" key=survey.key %}">View Survey Results</a>
+    </div>
     {% elif survey and not survey.is_completed %}
     Post-advising survey has been sent, but not yet completed. Expiry date: {{ survey_expiry }}
     {% elif not survey and visit.survey_sent %}
@@ -50,6 +50,5 @@
     {% else %}
     A post-advising survey was never sent for this visit.
     {% endif %}
-    </div>
 {% endif %}
 {% endblock %}
