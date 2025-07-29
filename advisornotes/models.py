@@ -533,6 +533,8 @@ class AdvisorVisitSurvey(models.Model):
         answer = self.questions_unanswered
         if answer == "OT":
             return "Other: " + self.other_questions_unanswered
+        elif answer == None:
+            return "N/A - The advisor fully answered my questions"
         else:
             return self.get_questions_unanswered_display()
         

@@ -3,7 +3,6 @@ from courselib.urlparts import UNIT_COURSE_SLUG, NOTE_ID, SEMESTER, COURSE_SLUG,
     NONSTUDENT_SLUG, UNIT_SLUG, SLUG_RE
 import advisornotes.views as advisornotes_views
 
-
 CATEGORY_SLUG = '(?P<category_slug>' + SLUG_RE + ')'
 VISIT_SLUG = '(?P<visit_slug>' + SLUG_RE + ')'
 
