@@ -330,7 +330,10 @@ def _initialize_student_survey(request: HttpRequest, visit: AdvisorVisit) -> Htt
     related_object=survey)
     l.save()
 
-    email = visit.student.email()
+    if visit.student is not None:
+        email = visit.student.email()
+    else:
+        email = visit.nonstudent.email()
     _send_survey_email(survey, email)
 
     # TESTING STUFF
@@ -368,6 +371,60 @@ def send_test_survey(request: HttpRequest) -> HttpResponse:
     messages.add_message(request, messages.SUCCESS, 'Survey sent to %s' % str(email))
     return HttpResponseRedirect(reverse('advisornotes:view_all_surveys'))
 
+def _email_manager_survey_alert(survey: AdvisorVisitSurvey) -> HttpResponse:
+    visit = survey.visit
+    unit = visit.unit
+    parent = unit.parent
+    # find any advisor manager roles for the unit or its parent
+    advisor_manager_roles = Role.objects_fresh.filter(unit__in=[unit, parent], role='ADVM')
+    if advisor_manager_roles:
+        people = []
+        for role in advisor_manager_roles:
+            people.append(role.person)
+        people = list(set(people))
+        to = []
+        for person in people:
+            to.append(person.email())
+        html_template = get_template('advisornotes/emails/survey_alert.html')
+        text_template = get_template('advisornotes/emails/survey_alert.txt')
+
+        # SEND EMAIL #
+        subject = "Feedback For Review: Post-Appointment Feedback Survey"
+        from_email = settings.DEFAULT_FROM_EMAIL
+        cc = None
+
+        url = settings.BASE_ABS_URL + reverse('advising:view_survey', kwargs={'key': survey.key})
+        context = {'url': url}
+
+        text_content = text_template.render(context)
+        html_content = html_template.render(context)
+
+        mail = EmailMultiAlternatives(subject=subject, body=text_content, from_email=from_email, to=to)
+        mail.attach_alternative(html_content, 'text/html')
+        mail.send()
+
+def _email_student_note(note):
+    """
+    Email advising note to student.
+    """
+    subject = "SFU Advising Note"
+    from_email = note.advisor.email()
+    if note.student is not None:
+        email = note.student.email()
+    else:
+        email = note.nonstudent.email()
+    content_html = note.html_content()
+    content_text = note.text  # the creole/markdown is good enough for the plain-text version?
+    attach = []
+    if note.file_attachment:
+        note.file_attachment.open()
+        attach = [(note.attachment_filename(), note.file_attachment.read(), note.file_mediatype)]
+
+    mail = EmailMultiAlternatives(subject=subject, body=content_text, from_email=from_email, to=[email],
+                                  cc=[from_email], attachments=attach)
+    mail.attach_alternative(content_html, 'text/html')
+    mail.send()
+
 # TEST STUFF FOR TESTERS, TO BE REMOVED
 def _test_stuff(request, survey, email):
     # TEST STUFF
@@ -401,7 +458,12 @@ def student_survey(request: HttpRequest, key: uuid) -> HttpResponse:
             l = LogEntry(userid=request.user.username,
                      description="%s submitted advising survey" % str(request.user.username),
                      related_object=survey)
-            l.save()      
+            l.save()
+
+            # email alerts to managers for visits to review
+            if survey.overall == 1:
+                _email_manager_survey_alert(survey)
+
             return HttpResponseRedirect(reverse('advising:student_survey', kwargs={'key': key}))
     else: 
         form = StudentSurveyForm(instance=survey)
