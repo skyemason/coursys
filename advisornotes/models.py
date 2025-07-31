@@ -554,7 +554,7 @@ class AdvisorVisitSurvey(models.Model):
         Remove any surveys that were not filled or are tests after 30 days.
         """
         expiry_date = datetime.datetime.today() - datetime.timedelta(days=30)
-        expired_surveys = AdvisorVisitSurvey.objects.filter(Q(complete=False) | Q(visit__isnull=True), end_date__lte=expiry_date).order_by('created_at')
+        expired_surveys = AdvisorVisitSurvey.objects.filter(Q(completed_at__isnull=True) | Q(visit__isnull=True), end_date__lte=expiry_date).order_by('created_at')
 
         for survey in expired_surveys:
             if not dry_run:
