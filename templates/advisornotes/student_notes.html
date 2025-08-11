@@ -218,7 +218,7 @@ This prospective student was created on {{student.created_at}}.
                         <i class='fa fa-eye'></i>
                     </button>
                     </a>
-                    {% if visit.survey_or_none %}
+                    {% if visit.survey %}
                         {% if visit.survey.completed_at %}
                         <a class="lineform" class="btn" href="{% url "advising:view_survey" key=visit.survey.key %}">
                         <button type='submit' class='btn' title="View survey results">
@@ -232,7 +232,7 @@ This prospective student was created on {{student.created_at}}.
                         {% endif %}
                     {% elif visit.survey_sent %}
                         <div class="lineform">
-                            <div class="btn expired" title="Survey link expired"><i class='fa fa-envelope'></i></div>
+                            <div class="btn expired" title="Survey was sent, but never completed (expired)."><i class='fa fa-envelope'></i></div>
                         </div>
                     {% endif %}
                 </td>

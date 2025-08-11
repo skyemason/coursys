@@ -10,7 +10,6 @@ import uuid
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('coredata', '0027_auto_20250811_1522'),
         ('advisornotes', '0016_nonstudent_created_at'),
     ]
 

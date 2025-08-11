@@ -429,7 +429,7 @@ class AdvisorVisit(models.Model):
         return self.created_at.strftime("%A, %B %-d at %-I:%M %p") + location
 
     def get_survey(self):
-        return getattr(self, "advisorvisitsurvey", None)
+        return getattr(self, "survey", None)
 
     def get_end_time_display(self):
         if self.end_time:

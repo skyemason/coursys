@@ -475,9 +475,12 @@ def student_survey(request: HttpRequest, key: uuid) -> HttpResponse:
                      related_object=survey)
             l.save()
 
-            # email alerts to managers for visits to review
-            if survey.overall == 1:
-                _email_manager_survey_alert(survey)
+            try:
+                # email alerts to managers for visits to review
+                if survey.overall == 1:
+                    _email_manager_survey_alert(survey)
+            except Exception as e:
+                pass
 
             return HttpResponseRedirect(reverse('advising:student_survey', kwargs={'key': key}))
     else: 
@@ -692,7 +695,7 @@ def student_notes(request, userid):
         nonstudent = False
     else:
         notes = AdvisorNote.objects.filter(nonstudent=student, unit__in=Unit.sub_units(request.units)).order_by("-created_at")
-        visits = AdvisorVisit.objects.filter(nonstudent=student, unit__in=request.units).select_related('advisorvisitsurvey').order_by('-created_at')
+        visits = AdvisorVisit.objects.filter(nonstudent=student, unit__in=request.units).select_related('survey').order_by('-created_at')
         for n in notes:
             n.entry_type = 'NOTE'
         items = notes
