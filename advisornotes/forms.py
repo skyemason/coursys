@@ -325,7 +325,7 @@ class AdvisorVisitFormSubsequent(forms.ModelForm):
 class StudentSurveyForm(ModelForm):
     time = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=SURVEY_TIME_CHOICES, label="Was 15 minutes enough time for your appointment?") 
     overall = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=SURVEY_OVERALL_CHOICES, label="How would you rate your appointment overall?")
-    reason = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=SURVEY_REASON_CHOICES, label="What was the main reason for your advising appointment?")
+    reason = forms.MultipleChoiceField(required=True, widget=forms.CheckboxSelectMultiple(), choices=SURVEY_REASON_CHOICES, label="Why did you meet with an advisor?")
     questions_answered = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=SURVEY_QUESTIONS_ANSWERED_CHOICES, label="Did the advisor answer your question(s)?")
     support = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=SURVEY_SUPPORT_CHOICES, label="I felt supported during my advising appointment?")
     advisor_review = forms.MultipleChoiceField(required=True, widget=forms.CheckboxSelectMultiple(), choices=SURVEY_ADVISOR_REVIEW_CHOICES, label="The advisor… (select all that apply)")
@@ -346,6 +346,9 @@ class StudentSurveyForm(ModelForm):
     def clean_advisor_review(self):
         return ",".join(self.cleaned_data['advisor_review'])
     
+    def clean_reason(self):
+        return ",".join(self.cleaned_data['reason'])
+    
     def clean_questions_unanswered(self):
         value = self.cleaned_data['questions_unanswered']
         if self.cleaned_data['questions_unanswered'] == 'none':
@@ -355,18 +358,23 @@ class StudentSurveyForm(ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+
         config_clean = ['other_questions_unanswered', 'other_advisor_review', 'other_reason']
 
         for field in config_clean:
             setattr(self.instance, field, cleaned_data[field])
 
+        if 'advisor_review' or 'reason' in self.errors: 
+            return cleaned_data
+
         questions_unanswered = cleaned_data.get('questions_unanswered')
         advisor_review = cleaned_data.get('advisor_review')
         reason = cleaned_data.get('reason')
-
-        if questions_unanswered != "OT": 
+        """
+        if questions_unanswered and questions_unanswered != "OT": 
             setattr(self.instance, 'other_questions_unanswered', '')
-        if "OT" not in advisor_review.split(","): 
+        if advisor_review and "OT" not in advisor_review.split(","): 
             setattr(self.instance, 'other_advisor_review', '')
-        if reason != "OT": 
+        if reason and "OT" not in reason.split(","):
             setattr(self.instance, 'other_reason', '')
+        """

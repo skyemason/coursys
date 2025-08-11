@@ -44,7 +44,7 @@
         <a class="btn" href="{% url "advising:view_survey" key=survey.key %}">View Survey Results</a>
     </div>
     {% elif survey and not survey.is_completed %}
-    Post-advising survey has been sent, but not yet completed. Expiry date: {{ survey_expiry }}
+    Post-advising survey has been sent, but not yet completed. Expiry date: {{ survey.get_survey_expiry }}
     {% elif not survey and visit.survey_sent %}
     Post-advising survey was sent, but never completed.
     {% else %}
