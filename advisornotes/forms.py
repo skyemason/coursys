@@ -330,12 +330,12 @@ class StudentSurveyForm(ModelForm):
     support = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=SURVEY_SUPPORT_CHOICES, label="I felt supported during my advising appointment?")
     advisor_review = forms.MultipleChoiceField(required=True, widget=forms.CheckboxSelectMultiple(), choices=SURVEY_ADVISOR_REVIEW_CHOICES, label="The advisor… (select all that apply)")
     questions_unanswered = forms.ChoiceField(required=True, widget=forms.RadioSelect(), choices=(('none', 'N/A - The advisor fully answered my questions'),)  + SURVEY_QUESTIONS_UNANSWERED_CHOICES, label="If your question wasn't fully answered during your appointment, what was the main reason? (Select the option that best describes your experience) ")
-    comments = forms.CharField(required=False, label="Any other comments? (Optional)", widget=forms.Textarea(attrs={'rows': 10}), max_length=100)
+    comments = forms.CharField(required=False, label="Any other comments? (Optional)", widget=forms.Textarea(attrs={'rows': 5}), max_length=500, help_text="Maximum 500 Characters")
 
     # extra info
-    other_questions_unanswered = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 1}), max_length=100)
-    other_advisor_review = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 1}), max_length=100)
-    other_reason = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 1}), max_length=100)
+    other_questions_unanswered = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 2}), max_length=200, help_text="Maximum 200 Characters")
+    other_advisor_review = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 2}), max_length=200, help_text="Maximum 200 Characters")
+    other_reason = forms.CharField(required=False, label="", widget=forms.Textarea(attrs={'rows': 2}), max_length=200, help_text="Maximum 200 Characters")
 
     class Meta:
         model = AdvisorVisitSurvey
@@ -370,11 +370,10 @@ class StudentSurveyForm(ModelForm):
         questions_unanswered = cleaned_data.get('questions_unanswered')
         advisor_review = cleaned_data.get('advisor_review')
         reason = cleaned_data.get('reason')
-        """
+
         if questions_unanswered and questions_unanswered != "OT": 
             setattr(self.instance, 'other_questions_unanswered', '')
         if advisor_review and "OT" not in advisor_review.split(","): 
             setattr(self.instance, 'other_advisor_review', '')
         if reason and "OT" not in reason.split(","):
             setattr(self.instance, 'other_reason', '')
-        """
