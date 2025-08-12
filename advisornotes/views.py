@@ -495,7 +495,7 @@ def view_all_surveys(request: HttpRequest) -> HttpResponse:
     user = get_object_or_404(Person, userid=request.user.username)
     surveys = AdvisorVisitSurvey.objects.filter(Q(visit__unit__in=request.units) | Q(created_by=user)).exclude(completed_at__isnull=True).order_by("-created_at")[:5000]
     incomplete_surveys = AdvisorVisitSurvey.objects.filter(completed_at__isnull=True, visit__unit__in=request.units).count()
-    return render(request, 'advisornotes/view_all_surveys.html', {'surveys': surveys, 'incomplete_surveys': incomplete_surveys, 'admin': True})
+    return render(request, 'advisornotes/view_all_surveys.html', {'surveys': surveys, 'incomplete_surveys': incomplete_surveys, 'admin': True, 'mine': False})
 
 @requires_role(['ADVS', 'ADVM'])
 def view_my_surveys(request: HttpRequest) -> HttpResponse:
@@ -504,8 +504,7 @@ def view_my_surveys(request: HttpRequest) -> HttpResponse:
     """
     advisor = get_object_or_404(Person, userid=request.user.username)
     surveys = AdvisorVisitSurvey.objects.filter(visit__unit__in=request.units, visit__advisor=advisor).exclude(completed_at__isnull=True).order_by("-created_at")[:5000]
-    incomplete_surveys = AdvisorVisitSurvey.objects.filter(completed_at__isnull=True, visit__unit__in=request.units, visit__advisor=advisor).count()
-    return render(request, 'advisornotes/view_all_surveys.html', {'surveys': surveys, 'incomplete_surveys': incomplete_surveys, 'mine': True})
+    return render(request, 'advisornotes/view_all_surveys.html', {'surveys': surveys, 'admin': False, 'mine': True})
 
 @requires_role(['ADVS', 'ADVM'])
 def view_survey(request: HttpRequest, key: uuid) -> HttpResponse:

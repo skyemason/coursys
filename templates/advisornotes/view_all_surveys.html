@@ -31,11 +31,6 @@ $(function() {
 {% endblock %}
 
 {% block content %}
-{% if incomplete_surveys > 0 %}
-<div class="notification">
-<p>There are currently {{ incomplete_surveys }} surveys that are still valid but have not yet been completed. <i class="fa fa-group"></i>
-</div>
-{% endif %}
 
 {% if surveys %}
 <table id="surveys" class="display">
@@ -60,7 +55,12 @@ $(function() {
             <td>{% if survey.visit %}{{ survey.visit.advisor}}{% endif %}</td>
             <td>{% if survey.visit %}{{ survey.visit.created_at }}{% endif %}</td>
             <td><span class="sort">{{ survey.created_at.isoformat }}</span>{{ survey.created_at }}</td>
-            <td>{{ survey.get_overall_display }}</td>
+            <td class="{% if survey.overall == 5 %} excellent
+                       {% elif survey.overall == 4 %} verygood
+                       {% elif survey.overall == 3 %} good
+                       {% elif survey.overall == 2 %} fair
+                       {% elif survey.overall == 1 %} needsimprovement
+                       {% endif %}"><span class="sort">{{ survey.overall }}</span>{{ survey.get_overall_display }}</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -70,6 +70,11 @@ $(function() {
 {% endif %}
 
 {% if admin %}
+{% if incomplete_surveys > 0 %}
+<div class="notification">
+<p>There are currently {{ incomplete_surveys }} surveys that are still valid but have not yet been completed. <i class="fa fa-group"></i>
+</div>
+{% endif %}
 <div class="actionlist">
     <a class="btn" href="{% url "advising:send_test_survey" %}">Send Myself a Test Survey</a>
 </div>
