@@ -1467,15 +1467,24 @@ def view_submission(request, form_slug, formsubmit_slug):
 
 @login_required
 def view_submission_progress(request, form_slug, formsubmit_slug):
-    form_submission, _ = _formsubmission_find_and_authz(request, form_slug, formsubmit_slug)
-    form = form_submission.form
-    user = get_object_or_404(Person, userid=request.user.username)
+    
+    # can access if in owning formgroup
+    formgroups = FormGroup.objects.filter(members__userid=request.user.username)
+    form_submissions = FormSubmission.objects.filter(form__slug=form_slug, slug=formsubmit_slug,
+                                        owner__in=formgroups)
+    
+    # hmm not admin? 
     is_initiator = False
+    if not form_submissions:
+        user = get_object_or_404(Person, userid=request.user.username)
+        is_initiator = SheetSubmission.objects.filter(form_submission__slug=formsubmit_slug, form_submission__initiator__sfuFormFiller=user, sheet__is_initial=True).exists()
 
-    if not form_submission:
-        is_initiator = SheetSubmission.objects.filter(form_submission=form_submission, form_submission__initiator__sfuFormFiller=user, form_submission__sheet__is_initial=True).exists()
-    if not is_initiator and not form_submission:
+    if not is_initiator and not form_submissions:
         raise Http404
+    
+    form_submission = get_object_or_404(FormSubmission, form__slug=form_slug, slug=formsubmit_slug)
+    form = form_submission.form
+
     progress_bar_enabled = form_submission.form.progress_bar
     if not progress_bar_enabled:
         raise Http404
