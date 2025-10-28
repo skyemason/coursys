@@ -1475,10 +1475,10 @@ def view_submission_progress(request, form_slug, formsubmit_slug):
     if not form_submission:
         is_initiator = SheetSubmission.objects.filter(form_submission=form_submission, form_submission__initiator__sfuFormFiller=user, form_submission__sheet__is_initial=True).exists()
     if not is_initiator and not form_submission:
-        return Http404
+        raise Http404
     progress_bar_enabled = form_submission.form.progress_bar
     if not progress_bar_enabled:
-        return Http404
+        raise Http404
     
     sheetsubs = SheetSubmission.objects.filter(form_submission=form_submission)
     sheets = Sheet.objects.filter(Q(active=True) | Q(id__in=sheetsubs.values('sheet')), form=form).order_by('order')
