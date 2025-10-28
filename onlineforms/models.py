@@ -328,10 +328,13 @@ class Form(models.Model, _FormCoherenceMixin):
     created_date = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
     advisor_visible = models.BooleanField(default=False, help_text="Should submissions be visible to advisors in this unit?")
+    progress_bar = models.BooleanField(default=False, help_text="Should submissions display a progress bar? Select sheets and their order on the following page.")
+
     def autoslug(self):
         return make_slug(self.unit.label + ' ' + self.title)
     slug = AutoSlugField(populate_from='autoslug', null=False, editable=False, unique=True)
     config = JSONField(null=False, blank=False, default=dict)  # addition configuration stuff:
+    # 'progressinfo': Additional info for users viewing form submissions progress
     # 'loginprompt': should the "log in with your account" prompt be displayed for non-logged-in? (default True)
     # 'unlisted':  Form can be filled out, but doesn't show up in the index
     # 'jsfile':  Extra Javascript file included with this form.  USE THIS CAREFULLY.  There is no validation here, and
@@ -339,9 +342,9 @@ class Form(models.Model, _FormCoherenceMixin):
     # 'autoconfirm':  Whether a confirmation should be emailed once someone submits the initial sheet.
     # 'emailsubject', 'emailbody':  The subject and body for the autoconfirm email if the autoconfirm option is set.
 
-
-    defaults = {'loginprompt': True, 'unlisted': False, 'jsfile': None, 'autoconfirm': False, 'emailsubject': '',
+    defaults = {'progressinfo': '', 'loginprompt': True, 'unlisted': False, 'jsfile': None, 'autoconfirm': False, 'emailsubject': '',
                 'emailbody': ''}
+    progressinfo, set_progressinfo = getter_setter('progressinfo')
     loginprompt, set_loginprompt = getter_setter('loginprompt')
     unlisted, set_unlisted = getter_setter('unlisted')
     jsfile, set_jsfile = getter_setter('jsfile')

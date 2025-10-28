@@ -1465,6 +1465,45 @@ def view_submission(request, form_slug, formsubmit_slug):
                    }
         return render(request, 'onlineforms/admin/view_partial_form.html', context)
 
+@login_required
+def view_submission_progress(request, form_slug, formsubmit_slug):
+    form_submission, _ = _formsubmission_find_and_authz(request, form_slug, formsubmit_slug)
+    form = form_submission.form
+    user = get_object_or_404(Person, userid=request.user.username)
+    is_initiator = False
+
+    if not form_submission:
+        is_initiator = SheetSubmission.objects.filter(form_submission=form_submission, form_submission__initiator__sfuFormFiller=user, form_submission__sheet__is_initial=True).exists()
+    if not is_initiator and not form_submission:
+        return Http404
+    progress_bar_enabled = form_submission.form.progress_bar
+    if not progress_bar_enabled:
+        return Http404
+    
+    sheetsubs = SheetSubmission.objects.filter(form_submission=form_submission)
+    sheets = Sheet.objects.filter(Q(active=True) | Q(id__in=sheetsubs.values('sheet')), form=form).order_by('order')
+    sheet_progress = []
+    for sheet in sheets:
+        complete_sheets = sheetsubs.filter(sheet=sheet, status='DONE')
+        pend_sheets = sheetsubs.filter(sheet=sheet, status='WAIT')
+        if complete_sheets and not pend_sheets:
+            status = 'complete'
+        elif pend_sheets:
+            status = 'progress'
+        else:
+            status = 'pending'
+        sheet_progress.append({'sheet': sheet, 
+                               'status': status,
+                               'complete_sheets': complete_sheets, 
+                               'pend_sheets': pend_sheets})
+    context = {
+            'form': form,
+            'form_sub': form_submission,
+            'sheet_progress': sheet_progress,
+            'form_slug': form_slug,
+            'formsubmit_slug': formsubmit_slug,
+            }
+    return render(request, 'onlineforms/admin/view_progress.html', context)
 
 @login_required
 def update_submission_notes(request, form_slug, formsubmit_slug):
