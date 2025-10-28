@@ -18,4 +18,6 @@
 	{% if sheet_progress %}
 	    {% include "onlineforms/admin/view_tracker.html" with sheet_progress=sheet_progress form_slug=form_slug formsubmit_slug=formsubmit_slug %}
     {% endif %}
+	<h3>Additional Information</h3>
+	<p>{{ form.progressinfo }}</p>
 {% endblock %}
