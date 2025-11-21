@@ -144,8 +144,9 @@ class GradTimeline(object):
                     c = possible_careers[-1]
                     c.add(h)
                 else:
-                    if (isinstance(h, CommitteeMembership) or isinstance(h, ScholarshipDisbursement)):
-                        # Try even harder: some were given grad committees or scholarships before they even started
+                    if (isinstance(h, CommitteeMembership) or isinstance(h, ScholarshipDisbursement) or isinstance(h, GradSemester)):
+                        # Try even harder: some were given grad committees, or scholarships before they even started
+                        # some will take courses before their programs technically started
                         possible_careers = [c for c in self.careers if c.unit == h.unit and c.last_program == h.acad_prog]
                         possible_careers.sort(key=lambda c: c.admit_term)
                         if possible_careers:
@@ -179,8 +180,7 @@ class GradTimeline(object):
 
         dropped = [h for h in happenings if not h.in_career]
         if dropped:
-            if not (str(dropped) == '[NWD in 1244]' or str(dropped) == '[NWD in 1254]'): #  found a "deferred" record in an earlier term. Not going to fix in SIMS. 
-                raise ValueError('Some happenings got dropped for %s! %s' % (self.emplid, dropped))
+            raise ValueError('Some happenings got dropped for %s! %s' % (self.emplid, dropped))
 
         for c in self.careers:
             c.sort_happenings()
