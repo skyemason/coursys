@@ -41,6 +41,8 @@ class EmployeeSearchForm(forms.Form):
 
 # Manage forms
 class FormForm(ModelForm):
+    progressinfo = forms.CharField(required=False, label='Progress description and additional info',
+                                help_text='Additional information for users viewing form submissions progress.', widget=forms.Textarea)
     loginprompt = forms.BooleanField(required=False, initial=True, label='Login prompt',
                                      help_text='Should non-logged-in users be prompted to log in? Uncheck this if you '
                                                'expect most users to be external to SFU.')
@@ -73,6 +75,7 @@ class FormForm(ModelForm):
         self.initial['autoconfirm'] = self.instance.autoconfirm()
         self.initial['emailsubject'] = self.instance.emailsubject()
         self.initial['emailbody'] = self.instance.emailbody()
+        self.initial['progressinfo'] = self.instance.progressinfo()
 
     def save(self, *args, **kwargs):
         self.instance.set_loginprompt(self.cleaned_data['loginprompt'])
@@ -80,6 +83,7 @@ class FormForm(ModelForm):
         self.instance.set_autoconfirm(self.cleaned_data['autoconfirm'])
         self.instance.set_emailsubject(self.cleaned_data['emailsubject'])
         self.instance.set_emailbody(self.cleaned_data['emailbody'])
+        self.instance.set_progressinfo(self.cleaned_data['progressinfo'])
 
         return super(FormForm, self).save(*args, **kwargs)
 
