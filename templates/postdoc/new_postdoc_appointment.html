@@ -25,7 +25,7 @@
 
 {% block content %}
 <div class="form_container">
-  <div class="bottom_admin">
+  <div class="admin_info">
     <p>Postdoctoral Fellows (PDF) appointment records in Faculty of Applied Sciences</p>
     <p>For inquiries or questions, please contact <u>fas_postdoc_support@sfu.ca</u></p>
   </div>
@@ -38,7 +38,7 @@
     <fieldset>
       <div class="form_section">
         <h2><strong>Information</strong></h2>
-        {{ form|as_dl_excludefields:"start_date,end_date,has_lump_sum_payment,annual_salary_amount,lump_sum_payment,benefits_estimation,work_hours,hours_of_work,vacation_entitlement_weeks,fs1_unit,fs1_fund,fs1_project,fs2_option,fs2_unit,fs2_fund,fs2_project,fs3_option,fs3_unit,fs3_fund,fs3_project" }}
+        {{ form|as_dl_includefields:"person,unit,supervisor,has_secondary_supervisor,secondary_supervisor,type,doctorate_completed_date,work_eligibility_status,relocation_reimbursement,relocation_reimbursement_amount,involved_teaching,other_info" }}
       </div>
 
       <div class="form_section">

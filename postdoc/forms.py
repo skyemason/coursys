@@ -1,5 +1,6 @@
 from django import forms
 import datetime
+from django.utils.html import format_html
 from coredata.forms import PersonField
 from postdoc.models import PostDoc, PostDocAttachment
 
@@ -48,7 +49,11 @@ class PostDocForm(forms.ModelForm):
     secondary_supervisor = PersonField(label='Secondary Hiring Supervisor Name', required=False)
     type = forms.ChoiceField(choices=TYPE_CHOICES, required=True)
     doctorate_completed_date = forms.DateField(label='Date Doctorate Completed', required=True)
-    work_eligibility_status = forms.ChoiceField(choices=WORK_ELIGIBILITY_STATUS_CHOICES, required=True)
+    work_eligibility_status = forms.ChoiceField(
+        choices=WORK_ELIGIBILITY_STATUS_CHOICES,
+        required=True,
+        help_text=format_html('<a id="postdoc-visa-link" href="#" style="display:none;"><b>+ Add New Visa</b></a>'),
+    )
     relocation_reimbursement = forms.ChoiceField(
         label='Relocation Reimbursement?',
         choices=YES_NO_CHOICES,

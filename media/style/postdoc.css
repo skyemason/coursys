@@ -7,7 +7,7 @@
     margin-bottom: 15px;
 }
 
-.bottom_admin {
+.admin_info {
     border: 12px solid #eee;
     padding: 10px;
 }
@@ -16,31 +16,4 @@
     display: inline;
     float: right;
     margin-left: 12px;
-}
-
-/* Secondary supervisor checkbox row: hide the empty <dt> label cell */
-dl.dlform dt:empty {
-    display: none;
-}
-
-/* When dt is hidden, let the dd span full width */
-dl.dlform dt:empty + dd {
-    margin-left: 0;
-}
-
-/* Inline layout: helptext label to the left, checkbox to its right */
-.secondary-supervisor-inline {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.secondary-supervisor-inline .helptext {
-    margin: 0;
-    line-height: 1.2;
-}
-
-.secondary-supervisor-inline input[type="checkbox"] {
-    margin: 0;
-    vertical-align: middle;
 }

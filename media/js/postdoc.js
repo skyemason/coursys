@@ -1,5 +1,3 @@
-// --- Utility show/hide helpers (mirrors ra_application.js pattern) ---
-
 function hideInput(field) {
     $('label[for=id_' + field + '_0]').parent().hide();
     $('label[for=id_' + field + ']').parent().hide();
@@ -11,8 +9,6 @@ function showInput(field) {
     $('label[for=id_' + field + ']').parent().show();
     $('#id_' + field).parent().parent().show();
 }
-
-// --- Secondary supervisor toggle ---
 
 function updateSecondarySupervisor() {
     if ($('input[name="has_secondary_supervisor"]:checked').val() === 'Y') {
@@ -74,9 +70,29 @@ function fs3ChoiceUpdate() {
     }
 }
 
-$(document).ready(function() {
+function shouldShowVisaLink() {
+    var status = $('#id_work_eligibility_status').val();
+    return status === 'PERMANENT_RESIDENT' || status === 'INTERNATIONAL';
+}
 
-    // Autocomplete for PDF SFU ID
+function updateVisaLink() {
+    var link = $('#postdoc-visa-link');
+    if (!link.length) {
+        return;
+    }
+
+    if (!shouldShowVisaLink()) {
+        link.hide();
+        return;
+    }
+
+    var baseUrl = '/visas/new_visa';
+    link.attr('href', baseUrl);
+    link.html('<b>+ Add New Visa</b>');
+    link.show();
+}
+
+$(document).ready(function() {
     $('#id_person').autocomplete({
         source: '/data/students',
         minLength: 2,
@@ -84,8 +100,6 @@ $(document).ready(function() {
             $(this).data('val', ui.item.value);
         }
     });
-
-    // Autocomplete for Hiring Supervisor Name
     $('#id_supervisor').autocomplete({
         source: '/data/students',
         minLength: 2,
@@ -93,8 +107,6 @@ $(document).ready(function() {
             $(this).data('val', ui.item.value);
         }
     });
-
-    // Autocomplete for Secondary Hiring Supervisor Name
     $('#id_secondary_supervisor').autocomplete({
         source: '/data/students',
         minLength: 2,
@@ -103,17 +115,14 @@ $(document).ready(function() {
         }
     });
 
-    // Set initial visibility of secondary supervisor field
     updateSecondarySupervisor();
-
-    // Set initial visibility for relocation amount and salary/lump-sum fields
     updateRelocationReimbursement();
     updateLumpSumPayment();
     updateWorkHours();
     fs2ChoiceUpdate();
     fs3ChoiceUpdate();
+    updateVisaLink();
 
-    // Toggle secondary supervisor on radio change
     $('input[name="has_secondary_supervisor"]').change(function() {
         updateSecondarySupervisor();
     });
@@ -136,6 +145,10 @@ $(document).ready(function() {
 
     $('#id_fs3_option').change(function() {
         fs3ChoiceUpdate();
+    });
+
+    $('#id_work_eligibility_status').change(function() {
+        updateVisaLink();
     });
 
     $('#id_doctorate_completed_date').datepicker({'dateFormat': 'yy-mm-dd'});
