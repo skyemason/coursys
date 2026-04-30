@@ -85,6 +85,7 @@ INSTALLED_APPS = (
     'relationships',
     'space',
     'reminders',
+    'postdoc',
     'forum',
 )
 MIDDLEWARE = [

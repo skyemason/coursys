@@ -1,0 +1,72 @@
+{% extends "base-wide.html" %}
+{% load static %}
+
+{% block title %}Post Doctoral Fellow{% endblock %}
+{% block h1 %}Post Doctoral Fellow{% endblock %}
+
+{% block headextra %}
+<script nonce="{{ CSP_NONCE }}">
+$(document).ready(function() {
+    $('#postdocs').dataTable( {
+    'bPaginate': true,
+    'lengthMenu': [[25, 50, 100, -1], [25, 50, 100, 'All']],
+    'bInfo': true,
+    'bFilter': true,
+    'bLengthChange': true,
+    "bJQueryUI": true,
+    'aaSorting': [[3, 'desc']],
+    } );
+} );
+</script>
+<link rel="stylesheet" href="{% static 'style/ra.css' %}" />
+{% endblock %}
+
+{% block subbreadcrumbs %}<li>Post Doctoral Fellow</li>{% endblock %}
+
+{% block actions %}
+{% endblock %}
+
+{% block content %}
+<div class="actionlist">
+    <a class="btn" href="{% url "postdoc:new_postdoc_appointment" %}">New Post Doc Appointment</a>
+    <a class="btn" href="{% url "postdoc:download_index" %}">Downloads</a>
+</div>
+
+<div class="datatable_container">
+    <table id="postdocs" class="display">
+        <thead>
+            <tr>
+                <th scope="col">PDF Name</th>
+                <th scope="col">Supervisor Name(s)</th>
+                <th scope="col">Unit</th>
+                <th scope="col">Start Date</th>
+                <th scope="col">End Date</th>
+                <th scope="col">Payment Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for appt in appointments %}
+            <tr>
+                <td><a href="{% url "postdoc:view_postdoc_appointment" postdoc_slug=appt.slug %}">{{ appt.person.sortname_pref }}</a></td>
+                <td>
+                    {{ appt.supervisor.sortname_pref }}
+                    {% if appt.secondary_supervisor %}
+                        &amp; {{ appt.secondary_supervisor.sortname_pref }}
+                    {% endif %}
+                </td>
+                <td>{{ appt.unit.label }}</td>
+                <td><span class="sort">{{ appt.start_date.isoformat }}</span>{{ appt.start_date }}</td>
+                <td><span class="sort">{{ appt.end_date.isoformat }}</span>{{ appt.end_date }}</td>
+                <td>
+                    {% if appt.lump_sum_payment %}
+                        ${{ appt.lump_sum_payment }} (Lump Sum)
+                    {% else %}
+                        ${{ appt.annual_salary_amount }} (Annual)
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

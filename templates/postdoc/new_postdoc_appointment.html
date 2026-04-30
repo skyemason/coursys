@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load form_display %}
+{% load static %}
+
+{% block title %}{% if edit %}Edit Post Doc Appointment{% else %}New Post Doc Appointment{% endif %}{% endblock %}
+{% block h1 %}{% if edit %}Edit Post Doc Appointment{% else %}New Post Doc Appointment{% endif %}{% endblock %}
+
+{% block subbreadcrumbs %}
+<li><a href="{% url "postdoc:post_doctoral_fellow" %}">Post Doctoral Fellow</a></li>
+{% if edit %}
+<li><a href="{% url "postdoc:view_postdoc_appointment" postdoc_slug=appt.slug %}">{{ appt.person.sortname_pref }}</a></li>
+<li>Edit Post Doc Appointment</li>
+{% else %}
+<li>New Post Doc Appointment</li>
+{% endif %}
+{% endblock %}
+
+{% block headextra %}
+<link rel="stylesheet" href="{% static 'style/postdoc.css' %}" />
+<script type="text/javascript" src="{% static 'js/postdoc.js' %}"></script>
+{% endblock %}
+
+{% block actions %}
+{% endblock %}
+
+{% block content %}
+<div class="form_container">
+  <div class="bottom_admin">
+    <p>Postdoctoral Fellows (PDF) appointment records in Faculty of Applied Sciences</p>
+    <p>For inquiries or questions, please contact <u>fas_postdoc_support@sfu.ca</u></p>
+  </div>
+  {% if edit %}
+  <form action="{% url "postdoc:edit_postdoc_appointment" postdoc_slug=appt.slug %}" method="post" class="subtle">
+  {% else %}
+  <form action="{% url "postdoc:new_postdoc_appointment" %}" method="post" class="subtle">
+  {% endif %}
+    {% csrf_token %}
+    <fieldset>
+      <div class="form_section">
+        <h2><strong>Information</strong></h2>
+        {{ form|as_dl_excludefields:"start_date,end_date,has_lump_sum_payment,annual_salary_amount,lump_sum_payment,benefits_estimation,work_hours,hours_of_work,vacation_entitlement_weeks,fs1_unit,fs1_fund,fs1_project,fs2_option,fs2_unit,fs2_fund,fs2_project,fs3_option,fs3_unit,fs3_fund,fs3_project" }}
+      </div>
+
+      <div class="form_section">
+        <h2><strong>Dates</strong></h2>
+        {{ form|as_dl_includefields:"start_date,end_date" }}
+      </div>
+
+      <div class="form_section">
+        <h2><strong>Payment Details</strong></h2>
+        {{ form|as_dl_includefields:"has_lump_sum_payment,annual_salary_amount,lump_sum_payment,benefits_estimation,work_hours,hours_of_work,vacation_entitlement_weeks" }}
+      </div>
+
+      <div class="form_section">
+        <h2><strong>Funding Source</strong></h2>
+        {{ form|as_dl_includefields:"fs1_unit,fs1_fund,fs1_project,fs2_option" }}
+      </div>
+
+      <div class="fs2">
+        <div class="form_section">
+          <h2><strong>Funding Source #2</strong></h2>
+          {{ form|as_dl_includefields:"fs2_unit,fs2_fund,fs2_project,fs3_option" }}
+        </div>
+      </div>
+
+      <div class="fs3">
+        <div class="form_section">
+          <h2><strong>Funding Source #3</strong></h2>
+          {{ form|as_dl_includefields:"fs3_unit,fs3_fund,fs3_project" }}
+        </div>
+      </div>
+    </fieldset>
+    <div class="directory_buttons">
+      <input type="submit" class="submit" value="Save" />
+    </div>
+  </form>
+</div>
+{% endblock %}
