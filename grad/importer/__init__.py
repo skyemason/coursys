@@ -115,9 +115,9 @@ def get_timelines(verbosity, import_emplids=None):
     for r in itertools.chain(*_batch_call(grad_semesters, emplids)):
         emplid = r[1]
         timeline_data[emplid].append(r)
-    for r in itertools.chain(*_batch_call(committee_members, emplids)):
-        emplid = r[1]
-        timeline_data[emplid].append(r)
+    #for r in itertools.chain(*_batch_call(committee_members, emplids)):
+    #    emplid = r[1]
+    #    timeline_data[emplid].append(r)
     for r in itertools.chain(*_batch_call(grad_scholarships, emplids)):
         emplid = r[1]
         timeline_data[emplid].append(r)
