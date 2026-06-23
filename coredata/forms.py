@@ -1,7 +1,7 @@
 from django import forms
 from django.conf import settings
 from coredata.models import Role, Person, Member, Course, CourseOffering, Unit, Semester, SemesterWeek, Holiday, \
-    CombinedOffering, AnyPerson, FuturePerson, RoleAccount, ROLE_MAX_EXPIRY, SIMS_ROLES
+    CombinedOffering, AnyPerson, FuturePerson, RoleAccount, SystemVariable, ROLE_MAX_EXPIRY, SIMS_ROLES
 from coredata.queries import find_person, add_person, SIMSProblem, userid_to_emplid
 from cache_utils.decorators import cached
 from django.urls import reverse
@@ -680,3 +680,13 @@ class RoleAccountForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(RoleAccountForm, self).__init__(*args, **kwargs)
         self.fields['userid'].widget.attrs.update({'autofocus': 'autofocus'})
+
+class SystemVariableForm(forms.ModelForm):
+    class Meta:
+        model = SystemVariable
+        fields = ['key', 'label', 'value_type', 'value', 'unit', 'notes']
+
+    def __init__(self, *args, **kwargs):
+        super(SystemVariableForm, self).__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields['key'].disabled = True

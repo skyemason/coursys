@@ -83,6 +83,10 @@ sysadmin_patterns = [ # prefix /sysadmin/
     url(r'^roleaccount/edit/(?P<roleaccount_id>\d+)$', coredata_views.edit_roleaccount, name='edit_roleaccount'),
     url(r'^logging/$', log_views.log_explore, name='log_explore'),
     url(r'^logging/(?P<log_type>\w+)/(?P<log_id>[0-9a-z\-]+)$', log_views.log_view, name='log_view'),
+    url(r'^variables/$', coredata_views.list_systemvariables, name='list_systemvariables'),
+    url(r'^variables/new/$', coredata_views.new_systemvariable, name='new_systemvariable'),
+    url(r'^variables/(?P<systemvariable_id>\d+)/edit/$', coredata_views.edit_systemvariable, name='edit_systemvariable'),
+
 ]
 
 browse_patterns = [ # prefix /browse/
