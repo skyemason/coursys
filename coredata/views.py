@@ -1750,7 +1750,7 @@ def new_systemvariable(request):
             messages.success(request, 'System variable created.')
             #LOG EVENT#
             l = LogEntry(userid=request.user.username,
-                  description=("new system variable: %s") % (form.instance.key),
+                  description=("new system variable: %s (%s)") % (form.instance.key, form.instance.id),
                   related_object=form.instance)
             l.save()
             return HttpResponseRedirect(reverse('sysadmin:list_systemvariables'))
@@ -1770,7 +1770,7 @@ def edit_systemvariable(request, systemvariable_id):
             messages.success(request, 'System variable updated.')
             #LOG EVENT#
             l = LogEntry(userid=request.user.username,
-                    description=("updated system variable: %s") % (form.instance.key),
+                    description=("updated system variable: %s (%s)") % (form.instance.key, form.instance.id),
                     related_object=form.instance)
             l.save()
             return HttpResponseRedirect(reverse('sysadmin:list_systemvariables'))
