@@ -1783,3 +1783,15 @@ def edit_systemvariable(request, systemvariable_id):
         'title': 'Edit System Variable',
         'is_edit': True,
     })
+
+@requires_global_role("SYSA")
+def delete_systemvariable(request, systemvariable_id):
+    variable = get_object_or_404(SystemVariable, id=systemvariable_id)
+    #LOG EVENT#
+    l = LogEntry(userid=request.user.username,
+            description=("deleted system variable: %s (%s)") % (variable.key, variable.id),
+            related_object=variable)
+    l.save()
+    variable.delete()
+    messages.success(request, "System variable deleted.")
+    return HttpResponseRedirect(reverse('sysadmin:list_systemvariables'))

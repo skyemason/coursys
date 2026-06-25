@@ -86,6 +86,7 @@ sysadmin_patterns = [ # prefix /sysadmin/
     url(r'^variables/$', coredata_views.list_systemvariables, name='list_systemvariables'),
     url(r'^variables/new/$', coredata_views.new_systemvariable, name='new_systemvariable'),
     url(r'^variables/(?P<systemvariable_id>\d+)/edit/$', coredata_views.edit_systemvariable, name='edit_systemvariable'),
+    url(r'^variables/(?P<systemvariable_id>\d+)/delete/$', coredata_views.delete_systemvariable, name='delete_systemvariable'),
 
 ]
 
