@@ -3,7 +3,8 @@ from ra.models import RAAppointment, Account, Project, HIRING_CATEGORY_DISABLED,
 from ra.models import RARequest, RARequestAttachment
 from ra.models import DUTIES_CHOICES_EX, DUTIES_CHOICES_DC, DUTIES_CHOICES_PD, DUTIES_CHOICES_IM, DUTIES_CHOICES_EQ, REQUEST_HIRING_CATEGORY
 from ra.models import DUTIES_CHOICES_SU, DUTIES_CHOICES_WR, DUTIES_CHOICES_PM
-from ra.models import STUDENT_TYPE, GRAS_PAYMENT_METHOD_CHOICES, RA_PAYMENT_METHOD_CHOICES, RA_PAYMENT_METHOD_CHOICES_USRA, NC_PAYMENT_METHOD_CHOICES, RA_BENEFITS_CHOICES, BOOL_CHOICES, FAS_CONTACT
+from ra.models import STUDENT_TYPE, GRAS_PAYMENT_METHOD_CHOICES, RA_PAYMENT_METHOD_CHOICES, RA_PAYMENT_METHOD_CHOICES_USRA, NC_PAYMENT_METHOD_CHOICES, RA_BENEFITS_CHOICES, BOOL_CHOICES
+from ra.utils import get_ra_intro_html
 from django.core.exceptions import ValidationError
 from coredata.models import Person, Semester, Unit
 from coredata.forms import PersonField
@@ -39,11 +40,6 @@ OBJECT_CHOICES = (
     (5444, '5444 - Sals Post-Doc RA Cdn'), (5446, '5446 - Sals Post-Doc RA Foreign'), (5460, '5460 - Sals Non-Students Hourly'), (5462, '5462 - Sals Non-Students Salaried'), (5842, '5842 - Speaker and Consult Fee'),
     (5844, '5844 - Invited Speakers Honoraria')
 )
-
-
-# TODO: Settings - would really like all of the following to be editable by funding admins (or even sys admins)
-# it should be the same across all units, and doesn't change with the semester
-# model with a single entry doesn't seem quite right? django-dbsettings?
 
 # deal with upcoming minimum wage increases (only one at a time)
 NEW_MIN_WAGE_DATE = datetime.date(2026, 6, 1) # Update to most recent or upcoming minimum wage increase date, once known
@@ -86,12 +82,7 @@ def add_business_days(date, days):
 MIN_WEEKS_VACATION = 2
 MIN_VACATION_PAY_PERCENTAGE = 4
 MIN_BIWEEKLY_HOURS = 4
-# unit contacts 
-CS_CONTACT = "csrahelp@sfu.ca"
-MSE_CONTACT = "mse_admin_assistant@sfu.ca"
-ENSC_CONTACT = "ensc-finance@sfu.ca"
-SEE_CONTACT = "fas_sry_admin@sfu.ca"
-DEANS_CONTACT = "fas_budget_manager@sfu.ca"
+
 # intro contacts
 URA_CONTACT = "fas_academic_relations@sfu.ca"
 PD_CONTACT = "fas_postdoc_support@sfu.ca"
