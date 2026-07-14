@@ -7,6 +7,7 @@ from haystack.exceptions import NotHandled
 from haystack.utils import loading
 from haystack.utils.app_loading import haystack_get_models, haystack_load_apps
 
+from coredata.csrpt import refresh_csrpt_auth
 from coredata.queries import SIMSConn, SIMSProblem
 from django.core.management import call_command
 from courselib.celerytasks import task
@@ -86,10 +87,23 @@ def regular_backup():
 
 @task()
 def backup_database():
-    call_command('backup_db', clean_old=True)
+    if settings.DO_IMPORTING_HERE:
+        call_command('backup_db', clean_old=True)
 
 
-@task()
+@task(queue='batch')
+def check_db_backup_create(backup_dir):
+    from coredata.panel import check_file_create
+    return check_file_create(backup_dir)
+
+
+@task(queue='batch')
+def check_db_backup_free(backup_dir):
+    from coredata.panel import check_free_space
+    return check_free_space(backup_dir, 'DB backup dir', 50)
+
+
+@task(queue='sims')
 def check_sims_connection():
     if settings.DISABLE_REPORTING_DB:
         return
@@ -345,6 +359,20 @@ def cleanup_tmp(path: str = '/tmp'):
 def import_active_grad_gpas():
     logger.info('Importing active grad GPAs')
     importer.import_active_grads_gpas()
+
+
+
+###################################################################################################
+# CSRPT auth
+
+@task(queue='sims')
+def csrpt_refresh_periodic():
+    if settings.DISABLE_REPORTING_DB:
+        return
+    res = refresh_csrpt_auth()
+    if res is not None:
+        raise RuntimeError(res)
+
 
 
 ###################################################################################################

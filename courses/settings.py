@@ -135,7 +135,10 @@ FIXTURE_DIRS = [os.path.join(BASE_DIR, 'fixtures')]
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 # Disable migrations only when running tests.
-if 'test' in sys.argv[1:]:
+IN_TESTING = 'test' in sys.argv[1:]
+if IN_TESTING:
+    if DEPLOY_MODE == 'production':
+        raise ValueError
     MIGRATION_MODULES = {}
     for m in INSTALLED_APPS:
         MIGRATION_MODULES[m] = None
@@ -251,6 +254,8 @@ if DEPLOY_MODE in ['production', 'proddev']:
             'TIMEOUT': 60,
         },
     }
+    if IN_TESTING:
+        HAYSTACK_CONNECTIONS['default']['INDEX_NAME'] = 'haystack-testing'
     DB_BACKUP_DIR = getattr(localsettings, 'DB_BACKUP_DIR', os.path.join(os.environ.get('COURSYS_DATA_ROOT', '.'), 'db_backup'))
 
 else:
@@ -359,6 +364,7 @@ DEFAULT_SENDER_EMAIL = 'helpdesk@cs.sfu.ca'
 SVN_URL_BASE = "https://punch.cs.sfu.ca/svn/"
 SIMS_DB_SERVER = getattr(localsettings, 'SIMS_DB_SERVER', '')
 SIMS_DB_NAME = getattr(localsettings, 'SIMS_DB_NAME', 'CSRPT')
+CSRPT_AUTH_FILES = getattr(localsettings, 'CSRPT_AUTH_FILES', '/tmp/csrpt_auth')
 
 EMPLID_API_SECRET = getattr(secrets, 'EMPLID_API_SECRET', '')
 MOSS_DISTRIBUTION_PATH = getattr(localsettings, 'MOSS_DISTRIBUTION_PATH', None)
