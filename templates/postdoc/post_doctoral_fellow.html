@@ -15,6 +15,15 @@ $(document).ready(function() {
     'bLengthChange': true,
     "bJQueryUI": true,
     'aaSorting': [[3, 'desc']],
+    'columns': [
+        { 'width': '15%' }, // PDF Name
+        { 'width': '30%' }, // Supervisor Name(s)
+        { 'width': '5%'  }, // Unit
+        { 'width': '10%' }, // Start Date
+        { 'width': '10%' }, // End Date
+        { 'width': '15%' }, // Payment Amount
+        { 'width': '15%' }, // Type
+        ]
     } );
 } );
 </script>
@@ -28,7 +37,7 @@ $(document).ready(function() {
 
 {% block content %}
 <div class="actionlist">
-    <a class="btn" href="{% url "postdoc:new_postdoc_appointment" %}">New Post Doc Appointment</a>
+    {% if postdoc_admin %}<a class="btn" href="{% url "postdoc:new_postdoc_appointment" %}">New Post Doc Appointment</a>{% endif %}
     <a class="btn" href="{% url "postdoc:download_index" %}">Downloads</a>
 </div>
 
@@ -42,6 +51,7 @@ $(document).ready(function() {
                 <th scope="col">Start Date</th>
                 <th scope="col">End Date</th>
                 <th scope="col">Payment Amount</th>
+                <th scope="col">Type</th>
             </tr>
         </thead>
         <tbody>
@@ -49,10 +59,9 @@ $(document).ready(function() {
             <tr>
                 <td><a href="{% url "postdoc:view_postdoc_appointment" postdoc_slug=appt.slug %}">{{ appt.person.sortname_pref }}</a></td>
                 <td>
-                    {{ appt.supervisor.sortname_pref }}
-                    {% if appt.secondary_supervisor %}
-                        &amp; {{ appt.secondary_supervisor.sortname_pref }}
-                    {% endif %}
+                    {% for link in appt.supervisor_links.all %}
+                        {{ link.supervisor.sortname_pref }}{% if not forloop.last %}; {% endif %}
+                    {% endfor %}
                 </td>
                 <td>{{ appt.unit.label }}</td>
                 <td><span class="sort">{{ appt.start_date.isoformat }}</span>{{ appt.start_date }}</td>
@@ -64,6 +73,7 @@ $(document).ready(function() {
                         ${{ appt.annual_salary_amount }} (Annual)
                     {% endif %}
                 </td>
+                <td>{{ appt.get_type_label }}</td>
             </tr>
             {% endfor %}
         </tbody>

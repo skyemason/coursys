@@ -10,15 +10,6 @@ function showInput(field) {
     $('#id_' + field).parent().parent().show();
 }
 
-function updateSecondarySupervisor() {
-    if ($('input[name="has_secondary_supervisor"]:checked').val() === 'Y') {
-        showInput('secondary_supervisor');
-    } else {
-        hideInput('secondary_supervisor');
-        $('#id_secondary_supervisor').val('');
-    }
-}
-
 function updateRelocationReimbursement() {
     if ($('input[name="relocation_reimbursement"]:checked').val() === 'Y') {
         showInput('relocation_reimbursement_amount');
@@ -52,24 +43,6 @@ function updateWorkHours() {
     }
 }
 
-function fs2ChoiceUpdate() {
-    if ($('#id_fs2_option').is(':checked')) {
-        $('.fs2').show();
-    } else {
-        $('.fs2').hide();
-        $('.fs3').hide();
-        $('#id_fs3_option').prop('checked', false);
-    }
-}
-
-function fs3ChoiceUpdate() {
-    if ($('#id_fs3_option').is(':checked')) {
-        $('.fs3').show();
-    } else {
-        $('.fs3').hide();
-    }
-}
-
 function shouldShowVisaLink() {
     var status = $('#id_work_eligibility_status').val();
     return status === 'PERMANENT_RESIDENT' || status === 'INTERNATIONAL';
@@ -100,14 +73,7 @@ $(document).ready(function() {
             $(this).data('val', ui.item.value);
         }
     });
-    $('#id_supervisor').autocomplete({
-        source: '/data/students',
-        minLength: 2,
-        select: function(event, ui) {
-            $(this).data('val', ui.item.value);
-        }
-    });
-    $('#id_secondary_supervisor').autocomplete({
+    $('input[id$="-supervisor"]').autocomplete({
         source: '/data/students',
         minLength: 2,
         select: function(event, ui) {
@@ -115,17 +81,10 @@ $(document).ready(function() {
         }
     });
 
-    updateSecondarySupervisor();
     updateRelocationReimbursement();
     updateLumpSumPayment();
     updateWorkHours();
-    fs2ChoiceUpdate();
-    fs3ChoiceUpdate();
     updateVisaLink();
-
-    $('input[name="has_secondary_supervisor"]').change(function() {
-        updateSecondarySupervisor();
-    });
 
     $('input[name="relocation_reimbursement"]').change(function() {
         updateRelocationReimbursement();
@@ -139,14 +98,6 @@ $(document).ready(function() {
         updateWorkHours();
     });
 
-    $('#id_fs2_option').change(function() {
-        fs2ChoiceUpdate();
-    });
-
-    $('#id_fs3_option').change(function() {
-        fs3ChoiceUpdate();
-    });
-
     $('#id_work_eligibility_status').change(function() {
         updateVisaLink();
     });
@@ -154,5 +105,8 @@ $(document).ready(function() {
     $('#id_doctorate_completed_date').datepicker({'dateFormat': 'yy-mm-dd'});
     $('#id_start_date').datepicker({'dateFormat': 'yy-mm-dd'});
     $('#id_end_date').datepicker({'dateFormat': 'yy-mm-dd'});
+
+    $('input[id$="-start_date"]').datepicker({'dateFormat': 'yy-mm-dd'});
+    $('input[id$="-end_date"]').datepicker({'dateFormat': 'yy-mm-dd'});
 
 });

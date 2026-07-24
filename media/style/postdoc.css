@@ -17,3 +17,27 @@
     float: right;
     margin-left: 12px;
 }
+
+.funding-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;   /* prevents spill outside form_section */
+}
+
+.funding-table {
+  width: 100%;
+  table-layout: fixed; /* use colgroup widths */
+}
+
+.funding-table th,
+.funding-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
+}
+
+.funding-table td select,
+.funding-table td input {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}

@@ -1,24 +1,25 @@
 from django import forms
 import datetime
 from django.utils.html import format_html
+from django.forms import BaseInlineFormSet, inlineformset_factory
 from coredata.forms import PersonField
-from postdoc.models import PostDoc, PostDocAttachment
+from postdoc.models import PostDoc, PostDocAttachment, PostDocFundingSource, PostDocSupervisor
 
+
+DEPT_CHOICES = (
+    ('', '-----------'), (2110, '2110 (CMPT)'), (2130, '2130 (ENSC)'), (2140, '2140 (MSE)'), (2150, '2150 (SEE)'), (2020, "2020 (Dean's Office)"), (2030, "2030 (Dean's Office)")
+)
+
+FUND_CHOICES = (
+    ('', '-----------'), (11, '11'), (13, '13'), (21, '21'), (23, '23'), (25, '25'), (29, '29'), (31, '31'), (32, '32'), (35, '35'), (36, '36'), (37, '37'), (38, '38'), (40, '40')
+)
 
 class PostDocForm(forms.ModelForm):
-    DEPT_CHOICES = (
-        ('', '-----------'), (2110, '2110 (CMPT)'), (2130, '2130 (ENSC)'), (2140, '2140 (MSE)'), (2150, '2150 (SEE)'), (2020, "2020 (Dean's Office)"), (2030, "2030 (Dean's Office)")
-    )
-
-    FUND_CHOICES = (
-        ('', '-----------'), (11, '11'), (13, '13'), (21, '21'), (23, '23'), (25, '25'), (29, '29'), (31, '31'), (32, '32'), (35, '35'), (36, '36'), (37, '37'), (38, '38'), (40, '40')
-    )
 
     TYPE_CHOICES = (
         ('INTERNAL', 'Internal'),
         ('EXTERNAL_SFU', 'External (paid through SFU)'),
         ('EXTERNAL_NON_SFU', 'External (not paid through SFU)'),
-        ('BOTH', 'Both Internal and External'),
     )
 
     WORK_ELIGIBILITY_STATUS_CHOICES = (
@@ -30,6 +31,8 @@ class PostDocForm(forms.ModelForm):
     WORK_HOURS_CHOICES = (
         ('FULL_TIME', 'Full Time (35 hours/week)'),
         ('PART_TIME', 'Part Time'),
+        ('EXT', 'External'),
+        ('LS', 'Lump Sum'),
     )
 
     YES_NO_CHOICES = (
@@ -38,15 +41,6 @@ class PostDocForm(forms.ModelForm):
     )
 
     person = PersonField(label='PDF SFU ID', required=True)
-    supervisor = PersonField(label='Hiring Supervisor Name', required=True)
-    has_secondary_supervisor = forms.ChoiceField(
-        label='Is there an additional supervisor?',
-        choices=YES_NO_CHOICES,
-        widget=forms.RadioSelect,
-        required=True,
-        initial='N',
-    )
-    secondary_supervisor = PersonField(label='Secondary Hiring Supervisor Name', required=False)
     type = forms.ChoiceField(choices=TYPE_CHOICES, required=True)
     doctorate_completed_date = forms.DateField(label='Date Doctorate Completed', required=True)
     work_eligibility_status = forms.ChoiceField(
@@ -84,7 +78,7 @@ class PostDocForm(forms.ModelForm):
     end_date = forms.DateField(required=True)
     benefits_estimation = forms.DecimalField(label='Benefits Estimation %', required=False, min_value=0, decimal_places=2)
     work_hours = forms.ChoiceField(choices=WORK_HOURS_CHOICES, required=True)
-    hours_of_work = forms.DecimalField(label='Hours of Work', required=False, min_value=0, decimal_places=2)
+    hours_of_work = forms.DecimalField(label='Hours of Work Per Week', required=False, min_value=0, decimal_places=2)
     vacation_entitlement_weeks = forms.DecimalField(label='Vacation Entitlement Per Year (in Weeks)', required=False, min_value=0, decimal_places=2)
     has_lump_sum_payment = forms.ChoiceField(
         label='Is this a lump sum payment?',
@@ -104,26 +98,11 @@ class PostDocForm(forms.ModelForm):
         min_value=0,
         decimal_places=2,
     )
-    fs1_unit = forms.ChoiceField(required=True, label='Department #1', choices=DEPT_CHOICES)
-    fs1_fund = forms.TypedChoiceField(required=True, label='Fund #1', choices=FUND_CHOICES, coerce=int)
-    fs1_project = forms.CharField(required=False, label='Project #1', help_text='Example: N654321, S654321, X654321, R654321. If fund 11, you may leave blank.')
-    fs2_option = forms.BooleanField(required=False, label='Please select the following if there is an additional funding source')
-    fs2_unit = forms.ChoiceField(required=False, label='Department #2', choices=DEPT_CHOICES)
-    fs2_fund = forms.TypedChoiceField(required=False, label='Fund #2', choices=FUND_CHOICES, coerce=int)
-    fs2_project = forms.CharField(required=False, label='Project #2', help_text='Example: N654321, S654321, X654321, R654321. If fund 11, you may leave blank.')
-    fs3_option = forms.BooleanField(required=False, label='Please select the following if there is an additional funding source')
-    fs3_unit = forms.ChoiceField(required=False, label='Department #3', choices=DEPT_CHOICES)
-    fs3_fund = forms.TypedChoiceField(required=False, label='Fund #3', choices=FUND_CHOICES, coerce=int)
-    fs3_project = forms.CharField(required=False, label='Project #3', help_text='Example: N654321, S654321, X654321, R654321. If fund 11, you may leave blank.')
-
     class Meta:
         model = PostDoc
         fields = (
             'person',
             'unit',
-            'supervisor',
-            'has_secondary_supervisor',
-            'secondary_supervisor',
             'type',
             'doctorate_completed_date',
             'work_eligibility_status',
@@ -140,17 +119,6 @@ class PostDocForm(forms.ModelForm):
             'work_hours',
             'hours_of_work',
             'vacation_entitlement_weeks',
-            'fs1_unit',
-            'fs1_fund',
-            'fs1_project',
-            'fs2_option',
-            'fs2_unit',
-            'fs2_fund',
-            'fs2_project',
-            'fs3_option',
-            'fs3_unit',
-            'fs3_fund',
-            'fs3_project',
         )
         labels = {
             'unit': 'Hiring Unit/School',
@@ -168,11 +136,6 @@ class PostDocForm(forms.ModelForm):
 
         setattr(self.instance, 'fs2_option', cleaned_data.get('fs2_option', False))
         setattr(self.instance, 'fs3_option', cleaned_data.get('fs3_option', False))
-
-        if cleaned_data.get('has_secondary_supervisor') == 'Y' and not cleaned_data.get('secondary_supervisor'):
-            self.add_error('secondary_supervisor', 'You must answer this question.')
-        if cleaned_data.get('has_secondary_supervisor') != 'Y':
-            cleaned_data['secondary_supervisor'] = None
 
         cleaned_data['relocation_reimbursement'] = cleaned_data.get('relocation_reimbursement') == 'Y'
         cleaned_data['involved_teaching'] = cleaned_data.get('involved_teaching') == 'Y'
@@ -216,39 +179,142 @@ class PostDocForm(forms.ModelForm):
                 self.add_error('annual_salary_amount', 'Value must be greater than 0.')
             cleaned_data['lump_sum_payment'] = None
 
-        project_exception_fund = 11
-
-        if cleaned_data.get('fs1_fund') != project_exception_fund and not cleaned_data.get('fs1_project'):
-            self.add_error('fs1_project', 'You must answer this question.')
-
-        if cleaned_data.get('fs2_option'):
-            error_message = 'If you have a second funding source then you must answer this question.'
-            if not cleaned_data.get('fs2_unit'):
-                self.add_error('fs2_unit', error_message)
-            if cleaned_data.get('fs2_fund') in [None, '']:
-                self.add_error('fs2_fund', error_message)
-            if cleaned_data.get('fs2_fund') != project_exception_fund and not cleaned_data.get('fs2_project'):
-                self.add_error('fs2_project', error_message)
-        else:
-            cleaned_data['fs2_unit'] = 0
-            cleaned_data['fs2_fund'] = 0
-            cleaned_data['fs2_project'] = ''
-
-        if cleaned_data.get('fs3_option'):
-            error_message = 'If you have a third funding source then you must answer this question.'
-            if not cleaned_data.get('fs3_unit'):
-                self.add_error('fs3_unit', error_message)
-            if cleaned_data.get('fs3_fund') in [None, '']:
-                self.add_error('fs3_fund', error_message)
-            if cleaned_data.get('fs3_fund') != project_exception_fund and not cleaned_data.get('fs3_project'):
-                self.add_error('fs3_project', error_message)
-        else:
-            cleaned_data['fs3_unit'] = 0
-            cleaned_data['fs3_fund'] = 0
-            cleaned_data['fs3_project'] = ''
-
         return cleaned_data
 
+class PostDocSupervisorForm(forms.ModelForm):
+    supervisor = PersonField(label='Supervisor', required=False)
+
+    class Meta:
+        model = PostDocSupervisor
+        fields = ('supervisor',)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.is_bound and getattr(self.instance, 'supervisor_id', None):
+            sup = self.instance.supervisor
+            if sup and sup.emplid:
+                emplid = str(sup.emplid)
+                self.initial['supervisor'] = emplid.zfill(9) if emplid.isdigit() else emplid
+
+    def is_valid(self, *args, **kwargs):
+        PersonField.person_data_prep(self)
+        return super().is_valid(*args, **kwargs)
+
+
+class BasePostDocSupervisorFormSet(BaseInlineFormSet):
+    default_error_messages = {
+        **BaseInlineFormSet.default_error_messages,
+        'too_few_forms': 'Enter at least one supervisor.',
+    }
+
+    def clean(self):
+        super().clean()
+        kept = 0
+        seen = set()
+
+        for form in self.forms:
+            if not hasattr(form, 'cleaned_data'):
+                continue
+            if form.cleaned_data.get('DELETE'):
+                continue
+
+            sup = form.cleaned_data.get('supervisor')
+            if not sup:
+                continue
+
+            kept += 1
+            if sup.pk in seen:
+                form.add_error('supervisor', 'Duplicate supervisor.')
+            seen.add(sup.pk)
+
+        if kept < 1:
+            raise forms.ValidationError('At least one supervisor is required.')
+
+
+PostDocSupervisorFormSet = inlineformset_factory(
+    PostDoc,
+    PostDocSupervisor,
+    form=PostDocSupervisorForm,
+    formset=BasePostDocSupervisorFormSet,
+    extra=3,
+    can_delete=True,
+    min_num=1,
+    validate_min=True,
+    max_num=3,
+    validate_max=True,
+)
+
+class PostDocFundingSourceForm(forms.ModelForm):
+    unit = forms.TypedChoiceField(choices=DEPT_CHOICES, coerce=int, empty_value=0, required=False, label='Department')
+    fund = forms.TypedChoiceField(choices=FUND_CHOICES, coerce=int, empty_value=0, required=False, label='Fund')
+    project = forms.CharField(required=False, label='Project')
+    amount = forms.DecimalField(required=False, min_value=0, label='Amount')
+    start_date = forms.DateField(required=False, label='Start date')
+    end_date = forms.DateField(required=False, label='End date')
+
+
+    class Meta:
+        model = PostDocFundingSource
+        fields = ('unit', 'fund', 'project', 'amount', 'start_date', 'end_date')
+
+class BasePostDocFundingSourceFormSet(BaseInlineFormSet):
+    default_error_messages = {
+        **BaseInlineFormSet.default_error_messages,
+        'too_few_forms': 'Enter at least one funding source.',
+    }
+
+    def clean(self):
+        super().clean()
+        project_exception_fund = 11
+        kept = 0
+
+        for form in self.forms:
+            if not hasattr(form, 'cleaned_data'):
+                continue
+
+            # built-in checkbox delete
+            if form.cleaned_data.get('DELETE'):
+                continue
+
+            unit = form.cleaned_data.get('unit') or 0
+            fund = form.cleaned_data.get('fund') or 0
+            project = (form.cleaned_data.get('project') or '').strip()
+            amount = form.cleaned_data.get('amount')
+            start_date = form.cleaned_data.get('start_date')
+            end_date = form.cleaned_data.get('end_date')
+
+            is_blank = (unit == 0 and fund == 0 and not project and amount is None and not start_date and not end_date)
+
+            # blank extra row: ignore
+            if is_blank:
+                continue
+
+            kept += 1
+            if unit == 0:
+                form.add_error('unit', 'Required.')
+            if fund == 0:
+                form.add_error('fund', 'Required.')
+            if fund != project_exception_fund and not project:
+                form.add_error('project', 'Required unless fund is 11.')
+            if start_date and end_date and end_date < start_date:
+                form.add_error('end_date', 'End date must be on or after start date.')
+
+        if kept == 0:
+            raise forms.ValidationError('At least one funding source is required.')
+
+
+PostDocFundingSourceFormSet = inlineformset_factory(
+    PostDoc,
+    PostDocFundingSource,
+    form=PostDocFundingSourceForm,
+    formset=BasePostDocFundingSourceFormSet,
+    extra=3,
+    can_delete=True,
+    min_num=1,
+    validate_min=True,
+    max_num=3,
+    validate_max=True,
+)
 
 class PostDocNoteForm(forms.ModelForm):
     admin_notes = forms.CharField(required=False, label='Administrative Notes', widget=forms.Textarea)

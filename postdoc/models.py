@@ -36,31 +36,8 @@ class PostDoc(models.Model):
         'PART_TIME': 'Part Time',
     }
 
-    person = models.ForeignKey(
-        Person,
-        related_name='postdoc_person',
-        on_delete=models.PROTECT,
-        null=False,
-    )
-    unit = models.ForeignKey(
-        Unit,
-        null=False,
-        blank=False,
-        on_delete=models.PROTECT,
-    )
-    supervisor = models.ForeignKey(
-        Person,
-        related_name='postdoc_supervisor',
-        on_delete=models.PROTECT,
-        null=False,
-    )
-    secondary_supervisor = models.ForeignKey(
-        Person,
-        related_name='postdoc_secondary_supervisor',
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-    )
+    person = models.ForeignKey(Person, related_name='postdoc_person', on_delete=models.PROTECT, null=False)
+    unit = models.ForeignKey(Unit, null=False,blank=False,on_delete=models.PROTECT)
     config = JSONField(null=False, blank=False, default=dict)
     type = models.CharField(max_length=24)
     doctorate_completed_date = models.DateField()
@@ -77,29 +54,11 @@ class PostDoc(models.Model):
     vacation_entitlement_weeks = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     annual_salary_amount = models.DecimalField(max_digits=11, decimal_places=2, null=True, blank=True)
     lump_sum_payment = models.DecimalField(max_digits=11, decimal_places=2, null=True, blank=True)
-    fs1_unit = models.IntegerField(default=0)
-    fs1_fund = models.IntegerField(default=0)
-    fs1_project = models.CharField(max_length=10, default='', blank=True)
-    fs2_option = config_property('fs2_option', default=False)
-    fs2_unit = models.IntegerField(default=0)
-    fs2_fund = models.IntegerField(default=0)
-    fs2_project = models.CharField(max_length=10, default='', blank=True)
-    fs3_option = config_property('fs3_option', default=False)
-    fs3_unit = models.IntegerField(default=0)
-    fs3_fund = models.IntegerField(default=0)
-    fs3_project = models.CharField(max_length=10, default='', blank=True)
     admin_notes = config_property('admin_notes', default='')
     created_at = models.DateTimeField(auto_now_add=True)
     deleted = models.BooleanField(default=False)
     last_updated_at = models.DateTimeField(auto_now=True)
-    last_updater = models.ForeignKey(
-        Person,
-        related_name='postdoc_last_updater',
-        default=None,
-        on_delete=models.PROTECT,
-        null=True,
-        editable=False,
-    )
+    last_updater = models.ForeignKey(Person, related_name='postdoc_last_updater', default=None, on_delete=models.PROTECT, null=True, editable=False)
 
     def autoslug(self):
         if self.person.userid:
@@ -119,12 +78,6 @@ class PostDoc(models.Model):
     def has_attachments(self):
         return self.attachments.visible().exists()
 
-    def get_submission_author(self):
-        person_id = self.config.get('submission_author_id')
-        if person_id:
-            return Person.objects.filter(id=person_id).first()
-        return self.last_updater
-
     def get_type_label(self):
         return self.TYPE_LABELS.get(self.type, self.type)
 
@@ -136,6 +89,32 @@ class PostDoc(models.Model):
 
     def __str__(self):
         return f'{self.person} — {self.unit}'
+
+class PostDocSupervisor(models.Model):
+    postdoc = models.ForeignKey(PostDoc, related_name='supervisor_links', on_delete=models.CASCADE)
+    supervisor = models.ForeignKey(Person, related_name='postdoc_supervisor_links', on_delete=models.PROTECT)
+
+    class Meta:
+        ordering = ('id',)
+        unique_together = (('postdoc', 'supervisor'),)
+
+    def __str__(self):
+        return f'{self.postdoc} — {self.supervisor}'
+
+class PostDocFundingSource(models.Model):
+    postdoc = models.ForeignKey(PostDoc, related_name='funding_sources', on_delete=models.CASCADE)
+    unit = models.IntegerField(default=0)
+    fund = models.IntegerField(default=0)
+    project = models.CharField(max_length=10, default='', blank=True)
+    amount = models.DecimalField(max_digits=11, decimal_places=2, null=True, blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+
+    class Meta:
+        ordering = ('id',)
+
+    def __str__(self):
+        return f'{self.postdoc} — {self.unit}/{self.fund}/{self.project}'
 
 
 class PostDocAttachment(models.Model):
