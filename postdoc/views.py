@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, StreamingHttpResponse
 from django.contrib import messages
@@ -9,36 +9,16 @@ from grad.models import GradStudent
 from log.models import LogEntry
 from tacontracts.models import TAContract
 from ta.models import TAContract as OldTAContract
-from postdoc.forms import PostDocFundingSourceFormSet, PostDocSupervisorForm, PostDocForm, PostDocNoteForm, PostDocAdminAttachmentForm, PostDocDownloadForm, PostDocSupervisorFormSet
+from postdoc.forms import PostDocFundingSourceFormSet, PostDocForm, PostDocNoteForm, PostDocAdminAttachmentForm, PostDocDownloadForm, PostDocSupervisorFormSet
 from postdoc.models import PostDoc
 from visas.models import Visa
 import csv
 import datetime
 
 
-def _unit_choices(units):
-    return [(u.id, u.name) for u in units]
-
-
-def _emplid_value(person):
-    if not person or not person.emplid:
-        return ''
-    emplid = str(person.emplid)
-    return emplid.zfill(9) if emplid.isdigit() else emplid
-
-
-def _postdoc_form_initial(appt):
-    return {
-        'person': _emplid_value(appt.person),
-        'relocation_reimbursement': 'Y' if appt.relocation_reimbursement else 'N',
-        'involved_teaching': 'Y' if appt.involved_teaching else 'N',
-        'has_lump_sum_payment': 'Y' if appt.lump_sum_payment is not None else 'N',
-    }
-
-
 @requires_role(['PDMA', 'PDOC'])
 def post_doctoral_fellow(request: HttpRequest) -> HttpResponse:
-    appointments = PostDoc.objects.filter(unit__in=request.units, deleted=False).select_related('person', 'unit').order_by('-start_date', '-end_date')
+    appointments = PostDoc.objects.filter(unit__in=request.units, deleted=False).select_related('person', 'unit').prefetch_related('supervisor_links__supervisor').order_by('-start_date', '-end_date')
     postdoc_admin = Role.objects_fresh.filter(role='PDMA', person__userid=request.user.username).exists()
     return render(request, 'postdoc/post_doctoral_fellow.html', {'appointments': appointments, 'postdoc_admin': postdoc_admin})
 
@@ -53,11 +33,10 @@ def view_postdoc_appointment(request: HttpRequest, postdoc_slug: str) -> HttpRes
 @requires_role('PDMA')
 def new_postdoc_appointment(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
-        form = PostDocForm(request.POST)
+        form = PostDocForm(request.POST, units=request.units)
         supervisor_formset = PostDocSupervisorFormSet(request.POST, prefix='supervisors')
         funding_formset = PostDocFundingSourceFormSet(request.POST, prefix='funding')
-        form.fields['unit'].choices = _unit_choices(request.units)
-        if form.is_valid() and supervisor_formset.is_valid()and funding_formset.is_valid():
+        if form.is_valid() and supervisor_formset.is_valid() and funding_formset.is_valid():
             editor = get_object_or_404(Person, userid=request.user.username)
             appt = form.save(commit=False)
             appt.last_updater = editor
@@ -73,26 +52,20 @@ def new_postdoc_appointment(request: HttpRequest) -> HttpResponse:
             messages.success(request, 'New Post Doc Appointment Created for ' + str(appt.person))
             return HttpResponseRedirect(reverse('postdoc:view_postdoc_appointment', kwargs={'postdoc_slug': appt.slug}))
     else:
-        form = PostDocForm()
+        form = PostDocForm(units=request.units)
         supervisor_formset = PostDocSupervisorFormSet(prefix='supervisors')
         funding_formset = PostDocFundingSourceFormSet(prefix='funding')
-        form.fields['unit'].choices = _unit_choices(request.units)
 
-    return render(request, 'postdoc/new_postdoc_appointment.html', {
-        'form': form,
-        'supervisor_formset': supervisor_formset,
-        'funding_formset': funding_formset,
-    })
+    return render(request, 'postdoc/new_postdoc_appointment.html', {'form': form, 'supervisor_formset': supervisor_formset, 'funding_formset': funding_formset})
 
 
 @requires_role('PDMA')
 def edit_postdoc_appointment(request: HttpRequest, postdoc_slug: str) -> HttpResponse:
     appt = get_object_or_404(PostDoc, slug=postdoc_slug, unit__in=request.units, deleted=False)
     if request.method == 'POST':
-        form = PostDocForm(request.POST, instance=appt)
+        form = PostDocForm(request.POST, instance=appt, units=request.units)
         supervisor_formset = PostDocSupervisorFormSet(request.POST, instance=appt, prefix='supervisors')
         funding_formset = PostDocFundingSourceFormSet(request.POST, instance=appt, prefix='funding')
-        form.fields['unit'].choices = _unit_choices(request.units)
 
         if form.is_valid() and supervisor_formset.is_valid() and funding_formset.is_valid():
             editor = get_object_or_404(Person, userid=request.user.username)
@@ -110,18 +83,11 @@ def edit_postdoc_appointment(request: HttpRequest, postdoc_slug: str) -> HttpRes
             messages.success(request, 'Edited Post Doc Appointment for ' + str(appt.person))
             return HttpResponseRedirect(reverse('postdoc:view_postdoc_appointment', kwargs={'postdoc_slug': appt.slug}))
     else:
-        form = PostDocForm(instance=appt, initial=_postdoc_form_initial(appt))
+        form = PostDocForm(instance=appt, units=request.units)
         supervisor_formset = PostDocSupervisorFormSet(instance=appt, prefix='supervisors')
         funding_formset = PostDocFundingSourceFormSet(instance=appt, prefix='funding')
-        form.fields['unit'].choices = _unit_choices(request.units)
 
-    return render(request, 'postdoc/new_postdoc_appointment.html', {
-        'form': form,
-        'edit': True,
-        'supervisor_formset': supervisor_formset,
-        'funding_formset': funding_formset,
-        'appt': appt,
-    })
+    return render(request, 'postdoc/new_postdoc_appointment.html', {'form': form, 'edit': True, 'supervisor_formset': supervisor_formset, 'funding_formset': funding_formset, 'appt': appt})
 
 @requires_role(['PDMA', 'PDOC'])
 def edit_postdoc_notes(request: HttpRequest, postdoc_slug: str) -> HttpResponse:
@@ -132,7 +98,9 @@ def edit_postdoc_notes(request: HttpRequest, postdoc_slug: str) -> HttpResponse:
         if noteform.is_valid():
             appt.last_updater = get_object_or_404(Person, userid=request.user.username)
             noteform.save()
-            messages.success(request, 'Updated notes for ' + str(appt.person))
+            l = LogEntry(userid=request.user.username, description="Edited Post Doc Appointment Notes for %s." % appt, related_object=appt)
+            l.save()
+            messages.success(request, 'Edited Notes for ' + str(appt.person))
             return HttpResponseRedirect(reverse('postdoc:view_postdoc_appointment', kwargs={'postdoc_slug': appt.slug}))
     else:
         noteform = PostDocNoteForm(instance=appt)
@@ -158,6 +126,8 @@ def new_admin_attachment(request: HttpRequest, postdoc_slug: str) -> HttpRespons
             attachment.save()
             appt.last_updater = editor
             appt.save()
+            l = LogEntry(userid=request.user.username, description="Added Admin Attachment for %s." % appt, related_object=appt)
+            l.save()
             messages.success(request, 'Attachment added.')
             return HttpResponseRedirect(reverse('postdoc:view_postdoc_appointment', kwargs={'postdoc_slug': appt.slug}))
     else:
@@ -190,11 +160,15 @@ def download_admin_attachment(request: HttpRequest, postdoc_slug: str, attach_sl
 
 @requires_role('PDMA')
 def delete_admin_attachment(request: HttpRequest, postdoc_slug: str, attach_slug: str) -> HttpResponse:
+    if request.method != 'POST':
+        return HttpResponse(status=405)
     appt = get_object_or_404(PostDoc, slug=postdoc_slug, unit__in=request.units, deleted=False)
     attachment = get_object_or_404(appt.attachments.visible(), slug=attach_slug)
     attachment.hide()
     appt.last_updater = get_object_or_404(Person, userid=request.user.username)
     appt.save()
+    l = LogEntry(userid=request.user.username, description="Deleted Admin Attachment for %s." % appt, related_object=appt)
+    l.save()
     messages.success(request, 'Attachment deleted.')
     return HttpResponseRedirect(reverse('postdoc:view_postdoc_appointment', kwargs={'postdoc_slug': appt.slug}))
 
@@ -203,12 +177,12 @@ def delete_admin_attachment(request: HttpRequest, postdoc_slug: str, attach_slug
 def delete_postdoc_appointment(request: HttpRequest, postdoc_slug: str) -> HttpResponse:
     if request.method != 'POST':
         return HttpResponse(status=405)
-
     appt = get_object_or_404(PostDoc, slug=postdoc_slug, unit__in=request.units, deleted=False)
     appt.deleted = True
     appt.last_updater = get_object_or_404(Person, userid=request.user.username)
     appt.save()
-
+    l = LogEntry(userid=request.user.username, description="Deleted Post Doc Appointment %s." % appt, related_object=appt)
+    l.save()
     messages.success(request, 'Post Doc appointment deleted.')
     return HttpResponseRedirect(reverse('postdoc:post_doctoral_fellow'))
 
@@ -229,14 +203,7 @@ def download_index(request: HttpRequest) -> HttpResponse:
         end_date = datetime.date.today().strftime('%Y-%m-%d')
         current = False
         include_visa_status = True
-    
-    context = {
-        'form': form,
-        'start_date': start_date,
-        'end_date': end_date,
-        'current': current,
-        'include_visa_status': include_visa_status,
-    }
+    context = {'form': form, 'start_date': start_date, 'end_date': end_date, 'current': current, 'include_visa_status': include_visa_status}
     return render(request, 'postdoc/download_index.html', context)
 
 
@@ -267,24 +234,8 @@ def download_admin(request: HttpRequest) -> HttpResponse:
         visa_columns = ['Most Recent Visa Type', 'Most Recent Visa Expiry Date']
 
     writer = csv.writer(response)
-    writer.writerow([
-        'Hiring Department (Unit)',
-        'PDF Name',
-        'PDF SFU ID',
-        'PDF Email',
-        'Supervisor Names',
-        'Supervisor IDs',
-        'Supervisor Emails',
-        'Funding Source Unit(s)',
-        'Funding Source Fund(s)',
-        'Funding Source Project(s)',
-    ] + visa_columns + [
-        'Start Date',
-        'End Date',
-        'Type',
-        'Pay Amount',
-        'Payment Type',
-    ])
+    writer.writerow(['Hiring Department (Unit)', 'PDF Name', 'PDF SFU ID', 'PDF Email', 'Supervisor Names', 'Supervisor IDs', 'Supervisor Emails', 'Funding Source Unit(s)',
+        'Funding Source Fund(s)', 'Funding Source Project(s)'] + visa_columns + ['Start Date', 'End Date', 'Type', 'Pay Amount', 'Payment Type'])
 
     for appt in appts:
         visa_status_values = []
@@ -317,25 +268,8 @@ def download_admin(request: HttpRequest) -> HttpResponse:
         funding_funds = '; '.join(str(fs.fund) for fs in sources if fs.fund is not None)
         funding_projects = '; '.join((fs.project or '') for fs in sources)
 
-
-        writer.writerow([
-            appt.unit.label,
-            appt.person.sortname(),
-            appt.person.emplid,
-            appt.person.email(),
-            supervisor_names,
-            supervisor_ids,
-            supervisor_emails,
-            funding_units,
-            funding_funds,
-            funding_projects,
-        ] + visa_status_values + [
-            appt.start_date,
-            appt.end_date,
-            appt.get_type_label(),
-            pay_amount,
-            payment_type,
-        ])
+        writer.writerow([appt.unit.label, appt.person.sortname(), appt.person.emplid, appt.person.email(), supervisor_names, supervisor_ids, supervisor_emails,
+            funding_units, funding_funds, funding_projects] + visa_status_values + [appt.start_date, appt.end_date, appt.get_type_label(), pay_amount, payment_type])
 
     return response
 
@@ -345,7 +279,7 @@ def appointee_appointments(request: HttpRequest, userid) -> HttpResponse:
     View to see all RA Requests/Appointments where a specific person is an appointee.
     """
     person = get_object_or_404(Person, find_userid_or_emplid(userid))
-    appointments = PostDoc.objects.filter(person=person, unit__in=request.units, deleted=False).order_by("-created_at")
+    appointments = PostDoc.objects.filter(person=person, unit__in=request.units, deleted=False).select_related('person', 'unit').prefetch_related('supervisor_links__supervisor').order_by('-created_at')
     grads = GradStudent.objects.filter(person=person, program__unit__in=request.units)
     tacontracts = TAContract.objects.filter(person=person, status__in=['NEW', 'SGN']).count() + OldTAContract.objects.filter(application__person=person).count()
     context = {'appointments': appointments, 'person': person, 'grads': grads, 'tacontracts': tacontracts}
@@ -357,6 +291,6 @@ def supervisor_appointments(request: HttpRequest, userid) -> HttpResponse:
     View to see all RA Requests/Appointments where a specific person is a supervisor.
     """
     person = get_object_or_404(Person, find_userid_or_emplid(userid))
-    appointments = (PostDoc.objects.filter(supervisor_links__supervisor=person, unit__in=request.units, deleted=False).distinct().order_by("-created_at"))
+    appointments = PostDoc.objects.filter(supervisor_links__supervisor=person, unit__in=request.units, deleted=False).select_related('person', 'unit').prefetch_related('supervisor_links__supervisor').distinct().order_by('-created_at')
     context = {'appointments': appointments, 'person': person}
     return render(request, 'postdoc/search/supervisor_appointments.html', context)

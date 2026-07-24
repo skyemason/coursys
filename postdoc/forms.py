@@ -127,15 +127,29 @@ class PostDocForm(forms.ModelForm):
             'end_date': 'Appointment End Date',
         }
 
+    def __init__(self, *args, **kwargs):
+        units = kwargs.pop('units', None)
+        super().__init__(*args, **kwargs)
+
+        if units is not None:
+            self.fields['unit'].choices = [(u.id, u.name) for u in units]
+
+        if not self.is_bound and self.instance and self.instance.pk:
+            person = self.instance.person
+            if person and person.emplid:
+                emplid = str(person.emplid)
+                self.initial['person'] = emplid.zfill(9) if emplid.isdigit() else emplid
+
+            self.initial['relocation_reimbursement'] = 'Y' if self.instance.relocation_reimbursement else 'N'
+            self.initial['involved_teaching'] = 'Y' if self.instance.involved_teaching else 'N'
+            self.initial['has_lump_sum_payment'] = 'Y' if self.instance.lump_sum_payment is not None else 'N'
+
     def is_valid(self, *args, **kwargs):
         PersonField.person_data_prep(self)
         return super().is_valid(*args, **kwargs)
 
     def clean(self):
         cleaned_data = super().clean()
-
-        setattr(self.instance, 'fs2_option', cleaned_data.get('fs2_option', False))
-        setattr(self.instance, 'fs3_option', cleaned_data.get('fs3_option', False))
 
         cleaned_data['relocation_reimbursement'] = cleaned_data.get('relocation_reimbursement') == 'Y'
         cleaned_data['involved_teaching'] = cleaned_data.get('involved_teaching') == 'Y'
