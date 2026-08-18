@@ -140,7 +140,7 @@ def _edit_req(request, ra_slug):
     if has_role('FDMA', request):
         req = get_object_or_404(RARequest, Q(draft=False) | Q(draft=True, author__userid=request.user.username), slug=ra_slug, deleted=False, unit__in=request.units)
     elif has_role('FUND', request):
-        req = get_object_or_404(RARequest, Q(draft=False, hiring_category__in=["NC", "GRAS"]) | Q(draft=True, author__userid=request.user.username), slug=ra_slug, deleted=False, unit__in=request.units)
+        req = get_object_or_404(RARequest, Q(draft=False, hiring_category__in=["GRAS"]) | Q(draft=True, author__userid=request.user.username), slug=ra_slug, deleted=False, unit__in=request.units)
     elif has_role('FDRE', request):
         req = get_object_or_404(RARequest, author__userid=request.user.username, slug=ra_slug, deleted=False, draft=True)
     return req
@@ -152,7 +152,7 @@ def _manage_req(request, ra_slug, queryset=None):
     if has_role('FDMA', request):
         req = get_object_or_404(queryset, slug=ra_slug, deleted=False, draft=False, unit__in=request.units)
     elif has_role('FUND', request):
-        req = get_object_or_404(queryset, slug=ra_slug, deleted=False, draft=False, unit__in=request.units, hiring_category__in=["NC", "GRAS"])
+        req = get_object_or_404(queryset, slug=ra_slug, deleted=False, draft=False, unit__in=request.units, hiring_category__in=["GRAS"])
     return req
 
 def _email_request_notification(req, url):
@@ -232,6 +232,10 @@ class RANewRequestWizard(SessionWizardView):
         if self.steps.current == 'dates':
             cleaned_data = self.get_cleaned_data_for_step('intro')
             context.update({'research_assistant': cleaned_data['hiring_category'] == 'RA'})
+        if self.steps.current == 'research_assistant':
+            cleaned_data_intro = self.get_cleaned_data_for_step('intro') or {}
+            usra = cleaned_data_intro.get('usra', False)
+            context.update({'usra': usra})
         if reappoint:
             ra_slug = self.kwargs['ra_slug']
             req = _reappointment_req(self.request, ra_slug)    
@@ -244,7 +248,9 @@ class RANewRequestWizard(SessionWizardView):
     def get_form_kwargs(self, step):
         step = step or self.steps.current
         kwargs = super(RANewRequestWizard, self).get_form_kwargs(step)
-
+        if step=='research_assistant':
+            cleaned_data_intro = self.get_cleaned_data_for_step('intro') or {}
+            kwargs['usra'] = cleaned_data_intro.get('usra', False)
         return kwargs
 
     def get_form_initial(self, step):
@@ -263,10 +269,12 @@ class RANewRequestWizard(SessionWizardView):
             init = {'hiring_category': cleaned_data['hiring_category'], 'edit': False, 'manager': has_role('FDMA', self.request)}
         if step == 'non_continuing':
             cleaned_data = self.get_cleaned_data_for_step('dates') or {}
-            init = {'pay_periods': cleaned_data['pay_periods'], 'backdated': cleaned_data['backdated'], 'start_date': cleaned_data['start_date'], 'end_date': cleaned_data['end_date']}
+            init = {'pay_periods': cleaned_data['pay_periods'], 'backdated': cleaned_data['backdated'], 'start_date': cleaned_data['start_date'], 'end_date': cleaned_data['end_date'], 'edit': False}
         if step == 'research_assistant':
             cleaned_data = self.get_cleaned_data_for_step('dates') or {}
-            init = {'pay_periods': cleaned_data['pay_periods'], 'backdated': cleaned_data['backdated'], 'start_date': cleaned_data['start_date'], 'end_date': cleaned_data['end_date'], 'edit': False}
+            cleaned_data_intro = self.get_cleaned_data_for_step('intro') or {}
+            usra = cleaned_data_intro.get('usra', False)
+            init = {'pay_periods': cleaned_data['pay_periods'], 'backdated': cleaned_data['backdated'], 'start_date': cleaned_data['start_date'], 'end_date': cleaned_data['end_date'], 'edit': False, 'usra': usra}
         if step == 'graduate_research_assistant':
             cleaned_data = self.get_cleaned_data_for_step('dates') or {}
             init = {'pay_periods': cleaned_data['pay_periods'], 'backdated': cleaned_data['backdated'], 'start_date': cleaned_data['start_date'], 'end_date': cleaned_data['end_date']}
@@ -379,6 +387,7 @@ class RANewRequestWizard(SessionWizardView):
         if req.hiring_category=="RA":
             req.gras_payment_method = None
             req.nc_payment_method = None
+            req.ra_benefits = 'Y'
         if req.hiring_category=="NC":
             req.gras_payment_method = None
             req.ra_payment_method = None
@@ -475,6 +484,10 @@ class RAEditRequestWizard(SessionWizardView):
         if self.steps.current == 'dates':
             cleaned_data = self.get_cleaned_data_for_step('intro')
             context.update({'research_assistant': cleaned_data['hiring_category'] == 'RA'})
+        if self.steps.current == 'research_assistant':
+            cleaned_data_intro = self.get_cleaned_data_for_step('intro') or {}
+            usra = cleaned_data_intro.get('usra', False)
+            context.update({'usra': usra})
         ra_slug = self.kwargs['ra_slug']
         req = _edit_req(self.request, ra_slug)
         context.update({'edit': True, 'draft': req.draft, 'slug': ra_slug, 'name': req.get_name(), 'get_hiring_category_title': req.get_hiring_category_title(), 'admin': _has_admin_role(self.request), 'status': req.status()})
@@ -491,6 +504,9 @@ class RAEditRequestWizard(SessionWizardView):
         if step=='graduate_research_assistant':
             if req.complete:
                 kwargs['complete'] = True
+        if step=='research_assistant':
+            cleaned_data_intro = self.get_cleaned_data_for_step('intro') or {}
+            kwargs['usra'] = cleaned_data_intro.get('usra', False)
         return kwargs
 
     def get_form_initial(self, step):
@@ -507,10 +523,12 @@ class RAEditRequestWizard(SessionWizardView):
             init = {'hiring_category': cleaned_data['hiring_category'], 'edit': (req.draft == False), 'manager': has_role('FDMA', self.request)}
         if step == 'non_continuing':
             cleaned_data = self.get_cleaned_data_for_step('dates') or {}
-            init = {'pay_periods': cleaned_data['pay_periods'], 'backdated': cleaned_data['backdated'], 'start_date': cleaned_data['start_date'], 'end_date': cleaned_data['end_date']}
+            init = {'pay_periods': cleaned_data['pay_periods'], 'backdated': cleaned_data['backdated'], 'start_date': cleaned_data['start_date'], 'end_date': cleaned_data['end_date'], 'edit': (req.draft == False)}
         if step == 'research_assistant':
             cleaned_data = self.get_cleaned_data_for_step('dates') or {}
-            init = {'pay_periods': cleaned_data['pay_periods'], 'backdated': cleaned_data['backdated'], 'start_date': cleaned_data['start_date'], 'end_date': cleaned_data['end_date'], 'edit': (req.draft == False)}
+            cleaned_data_intro = self.get_cleaned_data_for_step('intro') or {}
+            usra = cleaned_data_intro.get('usra', False)
+            init = {'pay_periods': cleaned_data['pay_periods'], 'backdated': cleaned_data['backdated'], 'start_date': cleaned_data['start_date'], 'end_date': cleaned_data['end_date'], 'edit': (req.draft == False), 'usra': usra}
         if step == 'graduate_research_assistant':
             cleaned_data = self.get_cleaned_data_for_step('dates') or {}
             init = {'pay_periods': cleaned_data['pay_periods'], 'backdated': cleaned_data['backdated'], 'start_date': cleaned_data['start_date'], 'end_date': cleaned_data['end_date']}
@@ -634,12 +652,13 @@ class RAEditRequestWizard(SessionWizardView):
         if req.hiring_category=="RA":
             req.gras_payment_method = None
             req.nc_payment_method = None
+            if req.ra_benefits == '':
+                req.ra_benefits = 'Y'
         if req.hiring_category=="NC":
             req.gras_payment_method = None
             req.ra_payment_method = None
 
         req.swpp = False
-        req.usra = False
 
         # draft was submitted 
         if submission:
@@ -802,7 +821,7 @@ def view_request(request: HttpRequest, ra_slug: str) -> HttpResponse:
     is_processor = (user == req.processor)
 
     manager = has_role('FDMA', request)
-    can_edit = ((graduate_research_assistant or non_cont) and admin) or (research_assistant and manager)
+    can_edit = (graduate_research_assistant and admin) or ((research_assistant or non_cont) and manager)
     adminform = RARequestAdminForm(instance=req)
     ishfform = RARequestISHFForm(instance=req)
     ishf_fee = ISHF_FEE
@@ -1375,7 +1394,7 @@ def download_admin(request):
             status = "Complete"
         else:
             status = "In Progress"
-        if ra.usra:
+        if ra.usra and (ra.hiring_category=="RA"):
             usra = " (USRA)"
         else:
             usra = ""
@@ -1428,7 +1447,7 @@ def download_admin(request):
 # altered RADataJson, to make a very similar browse page, but for RARequests
 class RARequestDataJson(BaseDatatableView):
     model = RARequest
-    columns = ['person', 'supervisor', 'unit', 'fund', 'project', 'start_date', 'end_date', 'total_pay']
+    columns = ['person', 'supervisor', 'unit', 'fund', 'project', 'start_date', 'end_date', 'total_pay', 'hiring_category']
     order_columns = [
         ['person__last_name', 'person__first_name'],
         ['supervisor__last_name', 'supervisor__first_name'],
@@ -1438,6 +1457,7 @@ class RARequestDataJson(BaseDatatableView):
         'start_date',
         'end_date',
         'total_pay',
+        'hiring_category',
     ]
     max_display_length = 500
 
@@ -1500,6 +1520,11 @@ class RARequestDataJson(BaseDatatableView):
             return ra.get_funds()
         elif column == 'project':
             return ra.get_projects()
+        elif column == 'hiring_category':
+            hiring_category = ra.hiring_category
+            if ra.hiring_category == 'RA' and ra.usra:
+                hiring_category += " (USRA)"
+            return hiring_category
 
         return str(getattr(ra, column))
 
