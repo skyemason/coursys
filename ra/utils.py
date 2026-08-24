@@ -1,4 +1,4 @@
-from coredata.models import SystemVariable
+from system.models import SystemVariable
 
 def get_contact_email(unit=None):
     return SystemVariable.get_value('ra_contact_email', unit)
