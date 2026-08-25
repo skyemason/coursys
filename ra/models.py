@@ -219,7 +219,7 @@ DEFAULT_LETTER_NCH = '\n\n'.join([
     """You are subject to and must comply with all applicable University policies and procedures including but not limited to:""",
     """GP 18 Human Rights Policy\nGP 37 Conflict of Interest\nGP 44 Sexualized Violence\nGP 47 Bullying and Harassment Policy\nI 10.04 Access to Information\nI 10.11 Protection of Privacy\nR 30.03 Intellectual Property Policy""",
     """<u>Mandatory SFU Safety Orientation Training</u>""",
-    """WorkSafe BC requires all new employees to take and complete safety orientation training.  SFU has a short online module you can take here: https://canvas.sfu.ca/enroll/RR8WDW, and periodically offers classroom sessions of the same material.  You shall be informed if any additional training is required.\n\n"""
+    """WorkSafe BC requires all new employees to take and complete safety orientation training.  SFU has a short online module you can take here: https://sfu.instructure.com/enroll/YXTRE6, and periodically offers classroom sessions of the same material.  You shall be informed if any additional training is required.\n\n"""
     ])
 
 DEFAULT_LETTER_NCBW = '\n\n'.join([
@@ -235,7 +235,7 @@ DEFAULT_LETTER_NCBW = '\n\n'.join([
     """You are subject to and must comply with all applicable University policies and procedures including but not limited to:""",
     """GP 18 Human Rights Policy\nGP 37 Conflict of Interest\nGP 44 Sexualized Violence\nGP 47 Bullying and Harassment Policy\nI 10.04 Access to Information\nI 10.11 Protection of Privacy\nR 30.03 Intellectual Property Policy""",
     """<u>Mandatory SFU Safety Orientation Training</u>""",
-    """WorkSafe BC requires all new employees to take and complete safety orientation training.  SFU has a short online module you can take here: https://canvas.sfu.ca/enroll/RR8WDW, and periodically offers classroom sessions of the same material.  You shall be informed if any additional training is required.\n\n"""
+    """WorkSafe BC requires all new employees to take and complete safety orientation training.  SFU has a short online module you can take here: https://sfu.instructure.com/enroll/YXTRE6, and periodically offers classroom sessions of the same material.  You shall be informed if any additional training is required.\n\n"""
     ])
 
 DEFAULT_LETTER_NCLS = '\n\n'.join([
@@ -246,10 +246,10 @@ DEFAULT_LETTER_NCLS = '\n\n'.join([
     """You are subject to and must comply with all applicable University policies and procedures including but not limited to:""",
     """GP 18 Human Rights Policy\n GP 37 Conflict of Interest\nGP 44 Sexual Violence and Misconduct Prevention, Education and Support\nGP 47 Bullying and Harassment Policy\nI 10.04 Access to Information and Protection of Privacy\nR 30.03 Intellectual Property Policy""",
     """<u>Mandatory SFU Safety Orientation Training</u>""",
-    """WorkSafe BC requires all new employees to take and complete safety orientation training.  SFU has a short online module you can take here: https://canvas.sfu.ca/enroll/RR8WDW, and periodically offers classroom sessions of the same material.  You shall be informed if any additional training is required.\n\n"""
+    """WorkSafe BC requires all new employees to take and complete safety orientation training.  SFU has a short online module you can take here: https://sfu.instructure.com/enroll/YXTRE6, and periodically offers classroom sessions of the same material.  You shall be informed if any additional training is required.\n\n"""
     ])
 
-DEFAULT_LETTER_TRAINING = "Mandatory SFU Safety Orientation Training: WorkSafe BC requires all new graduate students to take and complete safety orientation training.  SFU has a short online module you can take here: https://canvas.sfu.ca/enroll/RR8WDW, and periodically offers classroom sessions of the same material.  You shall be informed if any additional training is required.\n\n"
+DEFAULT_LETTER_TRAINING = "Mandatory SFU Safety Orientation Training: WorkSafe BC requires all new graduate students to take and complete safety orientation training.  SFU has a short online module you can take here: https://sfu.instructure.com/enroll/YXTRE6, and periodically offers classroom sessions of the same material.  You shall be informed if any additional training is required.\n\n"
 DEFAULT_LETTER_PIDA = """Public Interest Disclosure Act Training - As of December 1, 2024, the provincial government enacted the Public Interest Disclosure Act (PIDA) at research universities in B.C. including SFU. PIDA is provincial legislation that provides a safe, legally protected way for all current and former BC public sector employees to report serious or systemic issues of wrongdoing in the public sector. Employees are required to complete a training module that covers the protections that the law provides for protecting public sector employees who witness or know of serious wrongdoing occurring in their workplace, and outlines the options available for reporting wrongdoing at SFU and to the Ombudsperson. To access the training, please visit: https://learn.bcombudsperson.ca/speaking-up-safely/\n\n"""
 
 DEFAULT_LETTER_CONCLUDE = "If you accept the terms of this letter, please sign and return the letter, retaining the original for your records.\n\n"
@@ -273,8 +273,8 @@ DEFAULT_LETTER_SCIENCE_ALIVE_INTRO = '\n\n'.join([
     """<u>Right to Work in Canada</u>\nIf you are not a Canadian citizen or a permanent resident of Canada, you will need to apply to Immigration, Refugee and Citizenship Canada (“IRCC”) for authorization to enter and work in Canada. It is your responsibility to ensure that you are legally entitled, pursuant to IRCC’s requirements, to work at SFU. You are responsible for complying with the Immigration and Refugees Protection Act (“IRPA”) and with the conditions imposed on your study or work permit by IRCC.""",
     """<u>Employment Standards Act</u>\nAny terms and conditions of employment which have not been expressly addressed in this letter but which are covered by the ESA, will be dealt with in conformity with the relevant provisions of the ESA: https://www.bclaws.gov.bc.ca/civix/document/id/complete/statreg/00_96113_01""",
     """<u>Policies</u>\nYou are subject to and must comply with all applicable University policies and procedures including but not limited to:\nGP 18 Human Rights Policy\nGP 37 Conflict of Interest\nGP 44 Sexualized Violence\nGP 47 Bullying and Harassment Policy\nI 10.04 Access to Information\nI 10.11 Protection of Privacy\nR 30.03 Intellectual Property Policy""",
-    """<u>Mandatory Training</u>\nSFU Safety Orientation Training - WorkSafe BC requires all new employees to take and complete safety orientation training.  SFU has a short online module you can take here: https://canvas.sfu.ca/enroll/RR8WDW, and periodically offers classroom sessions of the same material. \n\n"""
-    """SFU Respectful Working and Learning Environments Training - Simon Fraser University is committed to creating a diverse, equitable and inclusive community where all feel welcome, accepted and appreciated. It will take all of us, working together to maintain an environment of inclusive excellence that we can be proud to be part of. To learn more please visit SFU Inclusive Excellence: https://www.sfu.ca/edi/actions/inclusive-excellence.html. To support this, a training module has been developed for SFU community members to remind us all about our responsibilities in contributing to respectful learning, research and work environments, help us understand what bullying and harassment behaviours are, and ensure we know where to turn for help. The training supports SFU's Bullying & Harassment policy (GP 47) and is aligned with WorkSafeBC requirements. You can access the module here: https://canvas.sfu.ca/enroll/DLXJPD.\n\n"""
+    """<u>Mandatory Training</u>\nSFU Safety Orientation Training - WorkSafe BC requires all new employees to take and complete safety orientation training.  SFU has a short online module you can take here: https://sfu.instructure.com/enroll/YXTRE6, and periodically offers classroom sessions of the same material. \n\n"""
+    """SFU Respectful Working and Learning Environments Training - Simon Fraser University is committed to creating a diverse, equitable and inclusive community where all feel welcome, accepted and appreciated. It will take all of us, working together to maintain an environment of inclusive excellence that we can be proud to be part of. To learn more please visit SFU Inclusive Excellence: https://www.sfu.ca/edi/actions/inclusive-excellence.html. To support this, a training module has been developed for SFU community members to remind us all about our responsibilities in contributing to respectful learning, research and work environments, help us understand what bullying and harassment behaviours are, and ensure we know where to turn for help. The training supports SFU's Bullying & Harassment policy (GP 47) and is aligned with WorkSafeBC requirements. You can access the module here: https://sfu.instructure.com/enroll/KPCW4T.\n\n"""
     """Public Interest Disclosure Act Training - As of December 1, 2024, the provincial government enacted the Public Interest Disclosure Act (PIDA) at research universities in B.C. including SFU. PIDA is provincial legislation that provides a safe, legally protected way for all current and former BC public sector employees to report serious or systemic issues of wrongdoing in the public sector. Employees are required to complete a training module that covers the protections that the law provides for protecting public sector employees who witness or know of serious wrongdoing occurring in their workplace, and outlines the options available for reporting wrongdoing at SFU and to the Ombudsperson. To access the training, please visit: https://learn.bcombudsperson.ca/speaking-up-safely/\n\n"""
     """You shall be informed if any additional training is required.\n\n"""
 ])
@@ -303,13 +303,18 @@ GRAS_PAYMENT_METHOD_CHOICES = (
 
 RA_PAYMENT_METHOD_CHOICES = (
     ('BW', 'Yes (Salaried - The Appointee is entitled to a minimum of 10 vacation days a year. Vacation time will be pro-rated based on the appointment terms.)'),
-    ('H', 'No (Hourly - The Appointee will receive 4% vacation pay. Timesheet must be submitted biweekly for the Appointee to be paid.)')
+    ('H', 'No (Hourly - The Appointee will receive vacation pay in lieu of vacation time. Timesheet must be submitted biweekly for the Appointee to be paid.)')
+)
+
+RA_PAYMENT_METHOD_CHOICES_USRA = (
+    ('BW', 'Yes (Salaried - The Appointee is entitled to a minimum of 10 vacation days a year. Vacation time will be pro-rated based on the appointment terms.)'),
+    ('H', 'No (The Appointee will receive vacation pay in lieu of vacation time. No timesheet is required, and the Appointee will receive the bi-weekly amount indicated on the PAF, plus 4% vacation pay, regardless of actual hours worked.)')
 )
 
 NC_PAYMENT_METHOD_CHOICES = (
     ('BW', 'Bi-weekly salary (The Appointee is entitled to a minimum of 10 vacation days a year per FTE. Vacation time will be prorated' +
     ' based on the appointment terms. An additional 11% will be charged for statutory benefits.)'),
-    ('H', 'Hourly (4% vacation pay will be deducted from the project in addition to 11% for statutory benefits. Must submit biweekly' +
+    ('H', 'Hourly (Vacation pay % will be deducted from the project in addition to 11% for statutory benefits. Must submit biweekly' +
     ' timesheets in order for the Appointee to be paid.)'),
     ('LS', 'Lump Sum Amount')
 )
@@ -508,7 +513,7 @@ class RARequest(models.Model):
     student = models.CharField(max_length=80, default=None, null=True, choices=STUDENT_TYPE)
     coop = models.BooleanField(null=True, blank=True)
     swpp = config_property('swpp', default=False) # not currently asked
-    usra = config_property('usra', default=False) # not currently asked
+    usra = config_property('usra', default=False)
     mitacs = models.BooleanField(null=True, blank=True)
     research = models.BooleanField(null=True, blank=True)
     thesis = models.BooleanField(null=True, blank=True)
@@ -606,6 +611,8 @@ class RARequest(models.Model):
     ra_duties_wr = config_property('ra_duties_wr', default='')
     ra_duties_pm = config_property('ra_duties_pm', default='')
     ra_other_duties = config_property('ra_other_duties', default='')
+    ishf_total = config_property('ishf_total', default=0)
+    ishf_subscribers = config_property('subscribers', default=0)
 
     # nc only options
     nc_duties = config_property('ra_other_duties', default='')
@@ -691,6 +698,12 @@ class RARequest(models.Model):
 
     def __str__(self):
         return self.get_name() + " (" + self.slug + ")"
+
+    def get_hiring_category_title(self):
+        if self.hiring_category == "NC":
+            return "Other Non-Continuing"
+        else:
+            return "RA"
 
     def duties_list(self):
         duties = []
@@ -878,11 +891,19 @@ class RARequest(models.Model):
             elif payment_method == "H":
                 grant_cost = self.get_base_pay()
                 if ra_benefits == "Y":
-                    grant_cost = grant_cost * 1.21
+                    grant_cost = grant_cost * (1.17 + (float(self.vacation_pay) / 100))
                 elif (ra_benefits == "NE" or ra_benefits == "N"):
-                    grant_cost = grant_cost * 1.15
+                    grant_cost = grant_cost * (1.11 + (float(self.vacation_pay) / 100))
+            if isinstance(self.ishf_total, float) and self.ishf_subscribers > 0:
+                grant_cost = grant_cost + self.ishf_total
         return grant_cost
         
+    def get_months_spanned(self):
+        # how many months does this appointment span? for extra fee purposes - https://stackoverflow.com/questions/4039879/best-way-to-find-the-months-between-two-dates
+        start_date = self.start_date
+        end_date = self.end_date
+        return (end_date.year - start_date.year) * 12 + end_date.month - start_date.month + 1
+    
     def get_name(self):
         if self.first_name and self.last_name:
             name = "%s %s" % (self.first_name, self.last_name)

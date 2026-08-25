@@ -852,7 +852,7 @@ class TAApplication(models.Model):
     new_workers_training = models.BooleanField('I have completed the SFU Safety Orientation training',
                                                default=False,
                                                help_text=mark_safe('Have you completed the University\'s safety '
-                                                         'orientation? SFU has a <a href="https://canvas.sfu.ca/enroll/RR8WDW">short online module</a> you can take online'
+                                                         'orientation? SFU has a <a href="https://sfu.instructure.com/enroll/YXTRE6">short online module</a> you can take online'
                                                          'and periodically '
                                                          'offers classroom sessions of the same material.  Some '
                                                          'research and instructional laboratories may require '
@@ -1136,6 +1136,11 @@ class TAContract(models.Model):
         course_list_string = ', '.join(ta_course.course.name() for ta_course in self.tacourse_set.all())
         return course_list_string
 
+    def instructor_list_string(self):
+        # Build a string of all instructors tied to this contract for system admin page
+        instructor_list_string = ", ".join(instructor.name() for ta_course in self.tacourse_set.all() for instructor in ta_course.course.instructors())
+        return instructor_list_string
+    
     def email_contract(self):
         unit = self.posting.unit
         try:

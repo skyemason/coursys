@@ -37,7 +37,7 @@ def fix_emplid():
         if not p.userid:
             continue
         emplid = userid_to_emplid(p.userid)
-        if emplid:
+        if emplid and str(emplid).isdigit():
             p.emplid = emplid
             p.save_if_dirty()
 
@@ -75,6 +75,8 @@ def get_unit(acad_org, create=False):
         acad_org = 'HUMANITIES'
     elif acad_org == 'EVSC':
         acad_org = 'ENVIRO SCI'
+    elif acad_org == 'WOMENS ST':
+        acad_org = 'GSWS'
 
     try:
         unit = Unit.objects.get(acad_org=acad_org)
