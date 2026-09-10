@@ -16,6 +16,7 @@ from grades.urls import offering_patterns
 from ra.urls import ra_patterns
 from reports.urls import report_patterns
 from ta.urls import ta_patterns, tug_patterns
+from postdoc.urls import postdoc_patterns
 from tacontracts.urls import tacontract_patterns
 from visas.urls import visas_pattern
 from outreach.urls import outreach_pattern
@@ -24,7 +25,6 @@ from inventory.urls import inventory_pattern
 from relationships.urls import relationship_patterns
 from space.urls import space_patterns
 from reminders.urls import reminders_patterns
-from postdoc.urls import postdoc_patterns
 
 import dashboard.views as dashboard_views
 import grad.views as grad_views
@@ -83,7 +83,6 @@ urlpatterns = [
     url(r'^inventory/', include((inventory_pattern, 'inventory'), namespace='inventory')),
     url(r'^space/', include((space_patterns, 'space'), namespace='space')),
     url(r'^reminders/', include((reminders_patterns, 'reminders'), namespace='reminders')),
-    url(r'^postdoc/', include((postdoc_patterns, 'postdoc'), namespace='postdoc')),
 
 
     # graduate student-related apps
@@ -92,6 +91,7 @@ urlpatterns = [
     url(r'^ta/', include((ta_patterns, 'ta'), namespace='ta')),
     url(r'^tacontracts/', include((tacontract_patterns, 'tacontracts'), namespace='tacontracts')),
     url(r'^tugs/', include((tug_patterns, 'tugs'), namespace='tugs')),
+    url(r'^postdoc/', include((postdoc_patterns, 'postdoc'), namespace='postdoc')),
 
 
     # redirect old mobile URLs to rightful locations
