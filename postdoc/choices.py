@@ -2,7 +2,6 @@ TYPE_CHOICES = (
     ('INTERNAL', 'Internal'),
     ('EXTERNAL_SFU', 'External (paid through SFU)'),
     ('EXTERNAL_NON_SFU', 'External (not paid through SFU)'),
-    ('BOTH', 'Both Internal and External'),
 )
 
 WORK_ELIGIBILITY_STATUS_CHOICES = (

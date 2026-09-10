@@ -155,7 +155,7 @@ class BasePostDocFundingSourceFormSet(BaseInlineFormSet):
 
     def clean(self):
         super().clean()
-        project_exception_fund = 11
+        project_exception_fund = '11'
         funding_sources = 0
 
         for form in self.forms:
