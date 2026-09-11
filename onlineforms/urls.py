@@ -45,6 +45,7 @@ forms_patterns = [
     url(r'^manage/new$', onlineforms_views.new_form, name='new_form'),
     url(r'^manage/' + FORM_SLUG + '/$', onlineforms_views.view_form, name='view_form'),
     url(r'^manage/' + FORM_SLUG + '/edit$', onlineforms_views.edit_form, name='edit_form'),
+    url(r'^manage/' + FORM_SLUG + '/edit_progress$', onlineforms_views.edit_progress, name='edit_progress'),
     url(r'^manage/' + FORM_SLUG + '/new$', onlineforms_views.new_sheet, name='new_sheet'),
     url(r'^manage/' + FORM_SLUG + '/preview$', onlineforms_views.preview_form, name='preview_form'),
     url(r'^manage/' + FORM_SLUG + '/edit/' + SHEET_SLUG + '/preview$', onlineforms_views.preview_sheet, name='preview_sheet'),

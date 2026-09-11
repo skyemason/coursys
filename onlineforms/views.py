@@ -17,7 +17,7 @@ from courselib.branding import help_email
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.conf import settings
 
-from onlineforms.forms import FormForm, NewFormForm, SheetForm, FieldForm, DynamicForm, GroupForm, \
+from onlineforms.forms import FormForm, NewFormForm, ProgressForm, SheetForm, FieldForm, DynamicForm, GroupForm, \
     EditSheetForm, NonSFUFormFillerForm, AdminAssignFormForm, AdminAssignSheetForm, EditGroupForm, EmployeeSearchForm, \
     AdminAssignFormForm_nonsfu, AdminAssignSheetForm_nonsfu, CloseFormForm, ChangeOwnerForm, AdminReturnForm, \
     BulkAssignForm, SearchCompletedForm, FormSubmissionNotesForm, DuplicateForm
@@ -768,6 +768,46 @@ def edit_form(request, form_slug):
         context = {'form': form, 'owner_form': owner_form}
         return render(request, 'onlineforms/edit_form.html', context)
 
+@requires_form_admin_by_slug()
+def edit_progress(request, form_slug):
+    # can access if in owning formgroup
+    owner_form = get_object_or_404(Form, slug=form_slug, owner__in=request.formgroups)
+    subsequent_sheets = Sheet.objects.filter(form=owner_form, active=True, is_initial=False).count() > 0
+    subsequent_selected_sheets = Sheet.objects.filter(form=owner_form, active=True, is_initial=False, progress_bar=True).count() > 0
+
+    if request.method == 'POST':
+        form = ProgressForm(request.POST, instance=owner_form)
+        if form.is_valid():
+            form.save()
+            #LOG EVENT#
+            l = LogEntry(userid=request.user.username, description=("Edited form progress settings %s.") % (owner_form,), related_object=owner_form)
+            l.save()
+            messages.success(request, 'Successfully edited progress settings for "%s"' % owner_form.title)
+            return HttpResponseRedirect(reverse('onlineforms:edit_progress', kwargs={'form_slug': owner_form.slug}))
+    else:
+        form = ProgressForm(instance=owner_form)
+
+    # for an example progress bar
+    example_sheets = Sheet.objects.filter(form=owner_form, active=True).filter(Q(progress_bar=True) | Q(is_initial=True)).order_by('order')
+    sheet_progress = []
+    user = get_object_or_404(Person, userid=request.user.username)
+    for i, sheet in enumerate(example_sheets):
+        item = {
+            'sheet': sheet,
+            'status': 'pending',
+            'complete_sheets': [],
+            'pend_sheets': [],
+        }
+        if i == 0:
+            item['status'] = 'complete'
+            item['complete_sheets'] = [{
+                'filler': user,
+                'completed_at': datetime.datetime.now(),
+            }]
+        sheet_progress.append(item)
+
+    context = {'form': form, 'owner_form': owner_form, 'sheet_progress': sheet_progress, 'subsequent_sheets': subsequent_sheets, 'subsequent_selected_sheets': subsequent_selected_sheets}
+    return render(request, 'onlineforms/admin/edit_progress.html', context)
 
 @requires_form_admin_by_slug()
 def new_sheet(request, form_slug):
@@ -1483,10 +1523,8 @@ def view_submission_progress(request, form_slug, formsubmit_slug):
     
     # can access if in owning formgroup
     formgroups = FormGroup.objects.filter(members__userid=request.user.username)
-    form_submissions = FormSubmission.objects.filter(form__slug=form_slug, slug=formsubmit_slug,
-                                        owner__in=formgroups)
+    form_submissions = FormSubmission.objects.filter(form__slug=form_slug, slug=formsubmit_slug, owner__in=formgroups)
     
-    # hmm not admin? 
     is_initiator = False
     if not form_submissions:
         user = get_object_or_404(Person, userid=request.user.username)
