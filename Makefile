@@ -4,6 +4,7 @@ GIT=sudo -u ${COURSYS_USER} git
 DOCKERCOMPOSE=docker compose
 # containers where our code runs, which are usually all that need to be rebuilt:
 CODE_CONTAINERS=beat admin manage `${DOCKERCOMPOSE} config --services | grep -e '^app' -e '^celery'`
+GIT_COMMIT=`${GIT} rev-parse --short HEAD || git rev-parse --short HEAD || echo unknown`
 
 
 start-all:
@@ -15,25 +16,25 @@ pull:
 pull-build:
 	${GIT} pull
 	${DOCKERCOMPOSE} pull
-	${DOCKERCOMPOSE} build --pull --no-cache
+	${DOCKERCOMPOSE} build --build-arg GIT_COMMIT=${GIT_COMMIT} --pull --no-cache
 
 build:
-	${DOCKERCOMPOSE} build
+	${DOCKERCOMPOSE} build --build-arg GIT_COMMIT=${GIT_COMMIT}
 
 build-code-containers:  # we almost never need containers without our code rebuilt, so don't by default.
-	${DOCKERCOMPOSE} build ${CODE_CONTAINERS}
+	${DOCKERCOMPOSE} build --build-arg GIT_COMMIT=${GIT_COMMIT} ${CODE_CONTAINERS}
 
 rollout:  # a zero-downtime switchover from old to new container images, rolling between app-a and app-b
 	# What's happening here: /dynamic_config/nginx-backends.conf is juggled to select app-* backend(s), and SIGHUP to nginx tells it to seamlessly reload its config.
 	# Then while each app-* container is being ignored by nginx, it's restarted.
 	# drain requests to app-a
 	${DOCKERCOMPOSE} run -q --remove-orphans admin cp docker/nginx/backend-configs/drain-a.conf /dynamic_config/nginx-backends.conf
-	${DOCKERCOMPOSE} kill --remove-orphans -s SIGHUP nginx && sleep 2
+	${DOCKERCOMPOSE} kill --remove-orphans -s SIGHUP nginx && sleep 5
 	# restart app-a
 	${DOCKERCOMPOSE} up -d --wait --timeout 30 --remove-orphans app-a
 	# drain app-b
 	${DOCKERCOMPOSE} run -q --remove-orphans admin cp docker/nginx/backend-configs/drain-b.conf /dynamic_config/nginx-backends.conf
-	${DOCKERCOMPOSE} kill --remove-orphans -s SIGHUP nginx && sleep 2
+	${DOCKERCOMPOSE} kill --remove-orphans -s SIGHUP nginx && sleep 5
 	# restart app-b
 	${DOCKERCOMPOSE} up -d --wait --timeout 30 --remove-orphans app-b
 	# restore default config (using both app-a and app-b)
@@ -44,12 +45,12 @@ deploy:
 	${DOCKERCOMPOSE} up -d --wait elasticsearch rabbitmq memcached  # get these (re)started first since other containers depend on them
 	${DOCKERCOMPOSE} run manage collectstatic --no-input
 	make rollout
-	${DOCKERCOMPOSE} up -d --wait --timeout 30 --remove-orphans 	# restart anything else that needs it
+	${DOCKERCOMPOSE} up -d --timeout 30 --remove-orphans 	# restart anything else that needs it
 
 deploy-no-rollout:  # skips the smooth "rollout" in favour of a faster "up -d" with a few seconds of downtime
 	${DOCKERCOMPOSE} up -d --wait elasticsearch rabbitmq memcached  # get these (re)started first since other containers depend on them
 	${DOCKERCOMPOSE} run manage collectstatic --no-input
-	${DOCKERCOMPOSE} up -d --remove-orphans
+	${DOCKERCOMPOSE} up -d --timeout 30 --remove-orphans
 
 new-code: build-code-containers deploy
 
@@ -97,3 +98,5 @@ dbshell:
 	${DOCKERCOMPOSE} run manage dbshell
 admin:
 	${DOCKERCOMPOSE} run admin bash
+
+.PHONY: deploy start-all pull pull-build build build-code-containers rollout new-code new-code-pull new-code-no-rollout migrate-safe purge-cache purge-static drain-tasks 503 rm503 compose-yml shell dbshell admin
