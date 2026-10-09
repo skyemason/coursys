@@ -1542,6 +1542,7 @@ def view_submission_progress(request, form_slug, formsubmit_slug):
     
     sheetsubs = SheetSubmission.objects.filter(form_submission=form_submission)
     sheets = Sheet.objects.filter(Q(progress_bar=True) | Q(is_initial=True), Q(active=True) | Q(id__in=sheetsubs.values('sheet')), form=form).order_by('order')
+    complete = form_submission.status == 'DONE'
     sheet_progress = []
     for sheet in sheets:
         complete_sheets = sheetsubs.filter(sheet=sheet, status='DONE')
@@ -1552,6 +1553,12 @@ def view_submission_progress(request, form_slug, formsubmit_slug):
             status = 'progress'
         else:
             status = 'pending'
+
+        # only show completed sheets if the form is complete, otherwise show all sheets
+        if complete:
+            if status != 'complete':
+                continue
+            
         sheet_progress.append({'sheet': sheet, 
                                'status': status,
                                'complete_sheets': complete_sheets, 
@@ -1562,6 +1569,7 @@ def view_submission_progress(request, form_slug, formsubmit_slug):
             'sheet_progress': sheet_progress,
             'form_slug': form_slug,
             'formsubmit_slug': formsubmit_slug,
+            'complete': complete,
             }
     return render(request, 'onlineforms/admin/view_progress.html', context)
 
@@ -2046,7 +2054,7 @@ def _sheet_submission(request, form_slug, formsubmit_slug=None, sheet_slug=None,
                                 
                             sheet_submission.emailsubmission_to_filler(form_submission, sheet_submission.filler.getFormFiller().email(), filled_sheets, subjectsuffix)
                         message = 'You have succesfully completed sheet %s of form %s. ' % (sheet.title, owner_form.title)
-                        if sheet_submission.requires_progress_bar_info:
+                        if sheet_submission.requires_progress_bar_info():
                             message = message + 'View progress here: %s' % (settings.BASE_ABS_URL + form_submission.get_progress_bar_url())
                         messages.success(request, message)
                         return HttpResponseRedirect(reverse('onlineforms:index'))

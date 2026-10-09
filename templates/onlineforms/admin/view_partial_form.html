@@ -29,7 +29,9 @@
             {% if can_admin and is_pending %}
                 <li><a href="{% url "onlineforms:update_submission_notes" form_slug=form_slug formsubmit_slug=formsubmit_slug %}">Update Short Note</a></li>
             {% endif %}
-            <li><a href="{% url "onlineforms:view_submission_progress" form_slug=form_slug formsubmit_slug=formsubmit_slug %}">Progress Bar</a></li>
+            {% if form.progress_bar %}
+                <li><a href="{% url "onlineforms:view_submission_progress" form_slug=form_slug formsubmit_slug=formsubmit_slug %}">Progress Bar</a></li>
+            {% endif %}
         </ul>
 </div>
 

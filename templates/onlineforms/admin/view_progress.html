@@ -15,6 +15,9 @@
 {% endblock %}
 
 {% block content %}
+	{% if complete %}
+		<p><b>This form has been marked as complete.</b></p>
+	{% endif %}
 	{% if sheet_progress %}
 	    {% include "onlineforms/admin/view_tracker.html" with sheet_progress=sheet_progress form_slug=form_slug formsubmit_slug=formsubmit_slug %}
     {% endif %}
